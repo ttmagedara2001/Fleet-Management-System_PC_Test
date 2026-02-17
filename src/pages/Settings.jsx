@@ -39,10 +39,10 @@ const DEFAULT_SETTINGS = {
 // ── Validation Rules ──────────────────────────────────────────────
 const VALIDATION_RULES = {
     temperature: { absMin: -50, absMax: 100, unit: '°C' },
-    humidity:    { absMin: 0,   absMax: 100, unit: '%' },
-    pressure:    { absMin: 300, absMax: 1100, unit: 'hPa' },
-    battery:     { absMin: 0,   absMax: 100, unit: '%' },
-    robotTemp:   { absMin: -20, absMax: 120, unit: '°C' },
+    humidity: { absMin: 0, absMax: 100, unit: '%' },
+    pressure: { absMin: 300, absMax: 1100, unit: 'hPa' },
+    battery: { absMin: 0, absMax: 100, unit: '%' },
+    robotTemp: { absMin: -20, absMax: 120, unit: '°C' },
 };
 
 /**
@@ -581,19 +581,131 @@ function Settings() {
                             ({connectedRobots.length} Robots Online)
                         </span>
                     </h2>
-                    <button
-                        onClick={handleRefreshTasks}
-                        disabled={isRefreshing}
-                        className="settings-refresh-btn"
-                        title="Refresh robot tasks from server"
-                    >
-                        {isRefreshing ? (
-                            <Loader2 size={14} className="animate-spin" />
-                        ) : (
-                            <RefreshCw size={14} />
-                        )}
-                        Refresh
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                            onClick={async () => {
+                                // Start all idle robots simultaneously
+                                const idleRobots = connectedRobots.filter(robot => {
+                                    const robotId = robot.id;
+                                    const isBusy = isRobotBusy ? isRobotBusy(robotId) : false;
+                                    const robotSettings = settings.robotSettings?.[robotId] || {};
+                                    const hasValidConfig = robotSettings.source && robotSettings.destination &&
+                                        robotSettings.source !== 'Select' && robotSettings.destination !== 'Select' &&
+                                        robotSettings.source !== robotSettings.destination;
+                                    return !isBusy && hasValidConfig;
+                                });
+
+                                if (idleRobots.length === 0) {
+                                    setRobotSaveMessage({
+                                        type: 'error',
+                                        text: 'No idle robots with valid tasks configured. Configure source and destination for idle robots first.'
+                                    });
+                                    setTimeout(() => setRobotSaveMessage(null), 4000);
+                                    return;
+                                }
+
+                                if (!selectedDeviceId) {
+                                    setRobotSaveMessage({ type: 'error', text: 'No device selected.' });
+                                    setTimeout(() => setRobotSaveMessage(null), 3000);
+                                    return;
+                                }
+
+                                setIsRefreshing(true);
+                                const results = [];
+                                const errors = [];
+
+                                // Assign tasks to all idle robots concurrently
+                                await Promise.allSettled(
+                                    idleRobots.map(async (robot) => {
+                                        const robotId = robot.id;
+                                        const config = settings.robotSettings?.[robotId] || {};
+
+                                        try {
+                                            const srcCoords = getLocationCoordinates(config.source);
+                                            const dstCoords = getLocationCoordinates(config.destination);
+                                            const taskId = generateTaskId();
+
+                                            const payload = {
+                                                robotId: robotId,
+                                                task_type: 'Deliver',
+                                                task_id: taskId,
+                                                status: 'Assigned',
+                                                assignedAt: new Date().toISOString(),
+                                                'initiate location': config.source,
+                                                destination: config.destination,
+                                                source_lat: srcCoords?.lat ?? null,
+                                                source_lng: srcCoords?.lng ?? null,
+                                                destination_lat: dstCoords?.lat ?? null,
+                                                destination_lng: dstCoords?.lng ?? null
+                                            };
+
+                                            // Optimistic local update
+                                            if (updateRobotTaskLocal) updateRobotTaskLocal(robotId, payload);
+
+                                            // Send to API
+                                            await updateStateDetails(selectedDeviceId, `fleetMS/robots/${robotId}/task`, payload);
+
+                                            results.push(robotId);
+                                        } catch (err) {
+                                            console.error(`[Settings] Failed to assign task to ${robotId}:`, err);
+                                            errors.push(robotId);
+                                        }
+                                    })
+                                );
+
+                                // Notify other components
+                                if (notifyTaskUpdate) notifyTaskUpdate();
+
+                                setIsRefreshing(false);
+
+                                if (errors.length === 0) {
+                                    setRobotSaveMessage({
+                                        type: 'success',
+                                        text: `✅ Started ${results.length} robot${results.length > 1 ? 's' : ''} working simultaneously!`
+                                    });
+                                } else if (results.length > 0) {
+                                    setRobotSaveMessage({
+                                        type: 'warning',
+                                        text: `Started ${results.length} robots. Failed: ${errors.length}`
+                                    });
+                                } else {
+                                    setRobotSaveMessage({
+                                        type: 'error',
+                                        text: `Failed to start robots. Check console for details.`
+                                    });
+                                }
+                                setTimeout(() => setRobotSaveMessage(null), 5000);
+                            }}
+                            disabled={isRefreshing}
+                            className="settings-refresh-btn"
+                            style={{
+                                background: 'linear-gradient(135deg, #10B981, #059669)',
+                                color: 'white',
+                                fontWeight: '600'
+                            }}
+                            title="Assign tasks to all idle robots and start them working simultaneously"
+                        >
+                            {isRefreshing ? (
+                                <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                                <CheckCircle size={14} />
+                            )}
+                            Start All Robots
+                        </button>
+                        <button
+                            onClick={handleRefreshTasks}
+                            disabled={isRefreshing}
+                            className="settings-refresh-btn"
+                            title="Refresh robot tasks from server"
+                        >
+                            {isRefreshing ? (
+                                <Loader2 size={14} className="animate-spin" />
+                            ) : (
+                                <RefreshCw size={14} />
+                            )}
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
                 {connectedRobots.length === 0 ? (

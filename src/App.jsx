@@ -15,35 +15,7 @@ import Sidebar from './components/layout/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Analysis from './pages/Analysis';
 import Settings from './pages/Settings';
-
-/* ------------------------------------------------------------------ */
-/*  Loading Screen — shown during initial authentication              */
-/* ------------------------------------------------------------------ */
-function LoadingScreen({ message }) {
-  return (
-    <div className="auth-screen">
-      <div className="auth-card">
-        {/* Animated logo */}
-        <div className="auth-logo">
-          <svg width="32" height="32" fill="currentColor" viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z" />
-          </svg>
-        </div>
-
-        <h1 className="auth-title">Fabrix</h1>
-        <p className="auth-subtitle">Fleet Management System</p>
-
-        {/* Progress bar */}
-        <div className="auth-progress-track">
-          <div className="auth-progress-bar" />
-        </div>
-
-        <p className="auth-message">{message}</p>
-      </div>
-    </div>
-  );
-}
+import LoadingScreen from './components/LoadingScreen';
 
 /* ------------------------------------------------------------------ */
 /*  Error Screen — shown when authentication fails                    */
@@ -106,7 +78,7 @@ function AppContent() {
     switch (activeTab) {
       case 'analysis': return <Analysis />;
       case 'settings': return <Settings />;
-      default:         return <Dashboard />;
+      default: return <Dashboard />;
     }
   };
 

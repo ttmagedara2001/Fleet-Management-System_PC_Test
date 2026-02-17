@@ -310,7 +310,7 @@ export function computePhaseProgress(task, currentLat, currentLng) {
 
 export function computeRobotHealth(batteryPct) {
   // batteryPct: 0-100
-  const pct = Math.max(0, Math.min(100, Number(batteryPct) || 0));
+  const pct = Math.round(Math.max(0, Math.min(100, Number(batteryPct) || 0)));
   const score = +(pct / 100).toFixed(3); // 0.0 - 1.0
 
   let label = "Unknown";

@@ -1,36 +1,39 @@
 /**
- * Authentication Context (JWT + HTTP-only Cookie)
+ * Authentication Context — DEMO MODE
  *
- * Auto-login on app mount.
- * The JWT is stored in localStorage (via authService) and exposed
- * through this context so components / DeviceContext can read it.
- * HTTP-only cookies (refresh token) are managed by the browser.
+ * Bypasses real authentication entirely.
+ * The app enters "Demo Mode" automatically on mount,
+ * simulating a successful login with no backend required.
  */
 
 import { createContext, useContext, useState, useEffect } from 'react';
-import { login, getToken, clearTokens } from '../services/authService';
+import {
+    mockLogin,
+    mockGetToken,
+    mockClearTokens,
+} from '../services/mockDataService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-    const [isAuthenticated, setIsAuthenticated] = useState(() => !!getToken());
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
-    /** Perform login — can be called manually for retry. */
+    /** Perform login — Demo mode: always succeeds. */
     const performLogin = async () => {
         setIsLoading(true);
         setError(null);
 
         try {
-            const success = await login();
+            const success = await mockLogin();
             if (success) {
                 setIsAuthenticated(true);
                 setError(null);
                 return success;
             }
         } catch (err) {
-            console.error('[Auth] Login failed:', err.message);
+            console.error('[Auth] Demo login failed:', err.message);
             setError(err.message);
             throw err;
         } finally {
@@ -38,17 +41,17 @@ export function AuthProvider({ children }) {
         }
     };
 
-    // Auto-login on mount — always fetch a fresh JWT + cookies
+    // Auto-login on mount — Demo Mode entry
     useEffect(() => {
         async function autoLogin() {
             try {
-                const success = await login();
+                const success = await mockLogin();
                 if (success) {
                     setIsAuthenticated(true);
                     setError(null);
                 }
             } catch (err) {
-                console.error('[Auth] Auto-login failed:', err.message);
+                console.error('[Auth] Demo auto-login failed:', err.message);
                 setError(err.message);
             } finally {
                 setIsLoading(false);
@@ -59,19 +62,21 @@ export function AuthProvider({ children }) {
     }, []);
 
     const logout = () => {
-        clearTokens();
+        mockClearTokens();
         setIsAuthenticated(false);
         setError(null);
     };
 
     const value = {
-        // Expose the actual JWT (or cookie flag) so consumers can use it
-        token: getToken(),
+        // Expose the demo token so consumers see the app as authenticated
+        token: mockGetToken(),
         isAuthenticated,
         isLoading,
         error,
         logout,
-        performLogin
+        performLogin,
+        // Flag so UI can show "Demo Mode" badge
+        isDemoMode: true,
     };
 
     return (

@@ -9,6 +9,15 @@ import {
     computePhaseProgress, isInsideRoom, findRoomAtPoint, resolveRoom, ROOMS
 } from '../utils/telemetryMath';
 import { getThresholds } from '../utils/thresholds';
+import {
+    getEnvironmentSnapshot,
+    getRobotsSnapshot,
+    generateEnvHistory,
+    generateRobotHistory,
+    registerActiveTask,
+    clearActiveTask,
+    updateActiveTaskPhase,
+} from '../services/mockDataService';
 
 const DeviceContext = createContext(null);
 
@@ -82,34 +91,48 @@ export function DeviceProvider({ children }) {
     });
 
     const [deviceData, setDeviceData] = useState(() => {
-        // Initial state without localStorage
+        // Pre-populate with mock environment readings for demo
         const initial = {};
         DEVICES.forEach(device => {
-            initial[device.id] = { ...DEFAULT_DEVICE_STATE };
+            const envSnap = getEnvironmentSnapshot(device.id);
+            initial[device.id] = {
+                ...DEFAULT_DEVICE_STATE,
+                environment: {
+                    ambient_temp: envSnap.ambient_temp,
+                    ambient_hum: envSnap.ambient_hum,
+                    atmospheric_pressure: envSnap.atmospheric_pressure,
+                },
+                state: {
+                    ac_power: 'OFF',
+                    air_purifier: 'INACTIVE',
+                    status: 'Online',
+                    gateway_health: 'Healthy',
+                    active_alert: null,
+                    wifi_rssi: -45,
+                },
+                lastUpdate: Date.now(),
+            };
         });
         return initial;
     });
 
-    // Initialize robots state with registry data per device (fresh start)
+    // Initialize robots state with mock data from MockDataService
     const [robots, setRobots] = useState(() => {
-        const buildInitialRobots = () => {
-            const robotState = {};
-            DEVICES.forEach(device => {
-                const deviceRobots = getRobotsForDevice(device.id);
-                robotState[device.id] = {};
-                deviceRobots.forEach(robot => {
-                    robotState[device.id][robot.id] = {
-                        ...robot,
-                        ...DEFAULT_ROBOT_SENSOR_DATA,
-                        task: null,
-                        taskQueue: [],   // Queue of pending tasks (FIFO)
-                        lastUpdate: Date.now()
-                    };
-                });
+        const robotState = {};
+        DEVICES.forEach(device => {
+            // Get pre-built mock robot data with realistic positions/battery/temp
+            const mockRobots = getRobotsSnapshot(device.id);
+            robotState[device.id] = {};
+            Object.entries(mockRobots).forEach(([robotId, mockRobot]) => {
+                robotState[device.id][robotId] = {
+                    ...mockRobot,
+                    task: null,
+                    taskQueue: [],
+                    lastUpdate: Date.now(),
+                };
             });
-            return robotState;
-        };
-        return buildInitialRobots();
+        });
+        return robotState;
     });
 
     const [alerts, setAlerts] = useState(() => {
@@ -122,16 +145,20 @@ export function DeviceProvider({ children }) {
         return [];
     });
 
-    // Time-series histories for Analysis graphs/tables (kept small)
+    // Time-series histories for Analysis graphs/tables — pre-populated with mock data
     const [envHistory, setEnvHistory] = useState(() => {
         const h = {};
-        DEVICES.forEach(d => { h[d.id] = []; });
+        DEVICES.forEach(d => {
+            h[d.id] = generateEnvHistory(d.id, 24, 200);
+        });
         return h;
     });
 
     const [robotHistory, setRobotHistory] = useState(() => {
         const rh = {};
-        DEVICES.forEach(d => { rh[d.id] = {}; });
+        DEVICES.forEach(d => {
+            rh[d.id] = generateRobotHistory(d.id, 24, 100);
+        });
         return rh;
     });
 
@@ -711,6 +738,8 @@ export function DeviceProvider({ children }) {
                             sourceArrivedAt: Date.now(),
                             progress: 45
                         };
+                        // Sync phase to mock service so robot stays at source during pickup
+                        updateActiveTaskPhase(deviceId, robotId, TASK_PHASES.PICKING_UP);
 
                         addAlert({
                             type: 'info', deviceId, robotId,
@@ -728,6 +757,8 @@ export function DeviceProvider({ children }) {
                                     message: `🚚 ${robotId} picked up, heading to: ${currentTask.destination || 'destination'}`,
                                     timestamp: Date.now()
                                 });
+                                // Sync phase to mock service so robot starts moving toward destination
+                                updateActiveTaskPhase(deviceId, robotId, TASK_PHASES.EN_ROUTE_TO_DESTINATION);
                                 return {
                                     ...p,
                                     [deviceId]: { ...p[deviceId], [robotId]: { ...r, task: { ...r.task, phase: TASK_PHASES.EN_ROUTE_TO_DESTINATION, pickedUpAt: Date.now(), progress: 50 } } }
@@ -756,6 +787,8 @@ export function DeviceProvider({ children }) {
                             destinationArrivedAt: Date.now(),
                             progress: 92
                         };
+                        // Sync phase to mock service so robot stays at destination during delivery
+                        updateActiveTaskPhase(deviceId, robotId, TASK_PHASES.DELIVERING);
 
                         addAlert({
                             type: 'info', deviceId, robotId,
@@ -797,6 +830,8 @@ export function DeviceProvider({ children }) {
                                     }
                                 })();
 
+                                // Clear active task from mock service so robot stops navigating
+                                clearActiveTask(deviceId, robotId);
                                 return {
                                     ...p,
                                     [deviceId]: {
@@ -1388,8 +1423,11 @@ export function DeviceProvider({ children }) {
             // Compute initial progress
             mergedTask.progress = computePhaseProgress(mergedTask, currentRobot.location?.lat, currentRobot.location?.lng);
 
-            // If newly assigned, auto-advance after a tick
+            // If newly assigned, register with mock service and auto-advance after a tick
             if (phase === TASK_PHASES.ASSIGNED) {
+                // Register task with mock service so robot moves toward target
+                registerActiveTask(deviceId, robotId, mergedTask);
+
                 setTimeout(() => {
                     setRobots(p => {
                         const r = p[deviceId]?.[robotId];
@@ -1401,6 +1439,8 @@ export function DeviceProvider({ children }) {
                         const hasSrc = (r.task.source_lat ?? r.task.src_lat ?? srcResolved?.room.center?.lat) != null;
 
                         const nextPhase = hasSrc ? TASK_PHASES.EN_ROUTE_TO_SOURCE : TASK_PHASES.EN_ROUTE_TO_DESTINATION;
+                        // Update mock service phase so robot moves in the right direction
+                        updateActiveTaskPhase(deviceId, robotId, nextPhase);
                         const progress = computePhaseProgress({ ...r.task, phase: nextPhase }, r.location?.lat, r.location?.lng);
                         return {
                             ...p,
@@ -1428,6 +1468,8 @@ export function DeviceProvider({ children }) {
         // ── Auto-dequeue: if task just completed, start next queued task after brief delay ──
         if (payload && typeof payload === 'object' &&
             (payload.status === 'Completed' || payload.status === 'completed' || payload.phase === TASK_PHASES.COMPLETED)) {
+            // Clear active task from mock service immediately
+            clearActiveTask(deviceId, robotId);
             setTimeout(() => {
                 setRobots(p => {
                     const r = p[deviceId]?.[robotId];

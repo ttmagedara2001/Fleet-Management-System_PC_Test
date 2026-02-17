@@ -9,7 +9,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useDevice } from '../../contexts/DeviceContext';
 
 function Header({ onMenuToggle, sidebarOpen }) {
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, isDemoMode } = useAuth();
     const { devices, selectedDeviceId, setSelectedDeviceId, alerts, isConnected, clearAlert, clearAllAlerts, markAlertRead, markAllAlertsRead } = useDevice();
 
     const unreadAlerts = alerts.filter(a => !a.read).length;
@@ -166,13 +166,13 @@ function Header({ onMenuToggle, sidebarOpen }) {
             <div className="header-icons">
                 {/* Connection Status Icons - Hidden on small mobile */}
                 <div className="header-status-icons">
-                    <div className={`header-icon ${isConnected ? 'active' : ''}`} title="WebSocket Status">
+                    <div className={`header-icon ${isConnected || isDemoMode ? 'active' : ''}`} title={isDemoMode ? 'Mock WebSocket (Demo)' : 'WebSocket Status'}>
                         <Wifi size={16} />
                     </div>
-                    <div className="header-icon active" title="HTTP API">
+                    <div className="header-icon active" title={isDemoMode ? 'Mock API (Demo)' : 'HTTP API'}>
                         <Radio size={16} />
                     </div>
-                    <div className={`header-icon ${isAuthenticated ? 'active' : ''}`} title="Server">
+                    <div className={`header-icon ${isAuthenticated ? 'active' : ''}`} title={isDemoMode ? 'Demo Server' : 'Server'}>
                         <Server size={16} />
                     </div>
                 </div>

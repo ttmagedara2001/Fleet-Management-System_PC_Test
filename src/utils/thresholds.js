@@ -182,7 +182,7 @@ export function getBatteryStatus(pct) {
  * @returns {{ score: number, label: string, pct: number, status: string }}
  */
 export function computeRobotHealthFromSettings(batteryPct) {
-  const pct = Math.max(0, Math.min(100, Number(batteryPct) || 0));
+  const pct = Math.round(Math.max(0, Math.min(100, Number(batteryPct) || 0)));
   const score = +(pct / 100).toFixed(3);
   const t = getThresholds().battery;
 

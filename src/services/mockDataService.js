@@ -492,7 +492,6 @@ export function mockGetTopicStreamData(deviceId, topic, startTime, endTime, pagi
 export async function mockLogin() {
   // Simulate network delay (300–600ms)
   await new Promise(r => setTimeout(r, 300 + Math.random() * 300));
-  console.log('🎭 DEMO MODE: Authentication bypassed — entering demo mode');
   localStorage.setItem('fabrix_jwt_token', '__demo_mode__');
   return true;
 }
@@ -529,7 +528,6 @@ export function mockConnectWebSocket(deviceId, onStream, onState, onConnected, o
     return { deactivate: () => {} };
   }
 
-  console.log(`🎭 [MockWS] Simulating WebSocket for device: ${deviceId}`);
 
   // Simulate connection delay
   const connectTimer = setTimeout(() => {

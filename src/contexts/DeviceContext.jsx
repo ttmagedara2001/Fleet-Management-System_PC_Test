@@ -972,7 +972,6 @@ export function DeviceProvider({ children }) {
                                     timestamp: new Date().toISOString(),
                                     action: 'robot_blocked'
                                 });
-                                console.log(`[Device] Collision: ${robotId} blocked near ${pairNames}`);
                             } catch (err) {
                                 console.error('[Device] Failed to send collision state:', err);
                             }

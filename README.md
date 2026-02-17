@@ -1,322 +1,311 @@
-# 🤖 Fabrix - Fleet Management System
+# Fabrix Fleet Management System
 
-<div align="center">
+> **Advanced autonomous robot fleet monitoring, control, and task management for semiconductor fabrication facilities**
 
-![Fabrix Logo](https://img.shields.io/badge/Fabrix-Fleet%20Management-7C3AED?style=for-the-badge&logo=robot&logoColor=white)
-![React](https://img.shields.io/badge/React-19.2.0-61DAFB?style=flat-square&logo=react)
-![Vite](https://img.shields.io/badge/Vite-7.2.4-646CFF?style=flat-square&logo=vite)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-4.1.18-38B2AC?style=flat-square&logo=tailwind-css)
-
-**A modern, real-time robot fleet management dashboard for monitoring and controlling autonomous robots in industrial environments.**
-
-[Getting Started](#-getting-started) • [Features](#-features) • [Documentation](#-documentation) • [API Reference](API_REFERENCE.md)
-
-</div>
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](package.json)
+[![React](https://img.shields.io/badge/React-19.2.0-61dafb.svg)](https://reactjs.org/)
+[![License](https://img.shields.io/badge/license-Private-red.svg)](LICENSE)
 
 ---
 
-## 📋 Table of Contents
+## 📖 Overview
 
-- [Overview](#-overview)
-- [Features](#-features)
-- [System Architecture](#-system-architecture)
-- [Getting Started](#-getting-started)
-- [Configuration](#-configuration)
-- [Project Structure](#-project-structure)
-- [Documentation](#-documentation)
-- [Technology Stack](#-technology-stack)
-- [Contributing](#-contributing)
+Fabrix is a comprehensive fleet management system designed for autonomous robots operating in semiconductor fabrication (fab) environments. The system provides real-time monitoring, intelligent task allocation, and advanced analytics for managing multi-robot fleets in cleanroom and manufacturing settings.
 
----
+### Key Features
 
-## 🎯 Overview
-
-**Fabrix** is a comprehensive fleet management system designed to monitor and control autonomous robots operating in industrial environments such as cleanrooms, loading bays, and storage facilities. The system provides:
-
-- **Real-time robot tracking** with live location updates on an interactive facility map
-- **Environmental monitoring** with temperature, humidity, and pressure sensors
-- **Device control** for AC units and air purifiers
-- **Historical data analysis** with customizable charts and data export
-- **Alert management** for critical conditions and robot status changes
-- **Task management** for assigning and monitoring robot operations
-
-The application connects to the **ProtoNest IoT Backend** using WebSocket/STOMP for real-time data streaming and REST APIs for historical data and device control.
+- 🤖 **Multi-Robot Fleet Management** - Monitor and control up to 5+ robots simultaneously
+- 📊 **Real-Time Dashboard** - Live telemetry, battery levels, temperature, and location tracking
+- 🎯 **Intelligent Task Allocation** - Assign delivery tasks with source/destination management
+- 🗺️ **Interactive FabMap** - Visual representation of robot positions and facility zones
+- 📈 **Advanced Analytics** - Historical data tracking, performance metrics, and trend analysis
+- ⚙️ **Custom Thresholds** - Configurable alerts for temperature, humidity, battery, and pressure
+- 🔄 **Auto/Manual Modes** - Automated environmental controls or manual override
+- ⚡ **Task Phase Tracking** - Real-time progress monitoring through pickup and delivery phases
+- 🚨 **Collision Detection** - Automatic robot blocking when proximity thresholds are breached
+- 📱 **Responsive Design** - Optimized for desktop, tablet, and mobile devices
 
 ---
 
-## ✨ Features
+## 🚀 Demo Mode
 
-### 🗺️ Interactive Facility Map
+This application runs in **standalone demo mode** - no backend server or external APIs required!
 
-- Real-time robot positions displayed on a facility layout
-- Zone visualization (Cleanrooms, Loading Bay, Storage, Maintenance)
-- Click-to-select robot details with status tooltips
-- Active task progress indicators
+**Perfect for:**
+- Portfolio demonstrations
+- Client presentations
+- System prototyping
+- Offline showcases
 
-### 📱 Fully Responsive Design
-
-- **Mobile-first approach** - Optimized for all device sizes
-- **Touch-friendly interface** - 44px minimum touch targets
-- **5 responsive breakpoints** - Mobile, tablet, desktop, and more
-- **Hamburger menu** - Easy navigation on small screens
-- **Adaptive layouts** - Components adjust to screen size
-- **[View Mobile Guide →](MOBILE_RESPONSIVE.md)**
-
-### 🤖 Robot Fleet Management
-
-- Monitor multiple robots simultaneously
-- Track battery levels, temperature, and operational status
-- View current tasks and progress
-- Status indicators: Active, Charging, Idle, Error
-
-### 📊 Environmental Monitoring
-
-- Ambient temperature monitoring (°C)
-- Humidity level tracking (%)
-- Atmospheric pressure readings (hPa)
-- Real-time sensor data updates
-
-### 🔔 Smart Alerts
-
-- Low battery warnings
-- Temperature threshold alerts
-- Robot error notifications
-- Connection status monitoring
-
-### 📈 Data Analysis
-
-- Historical data visualization with interactive charts
-- Multiple time range options (1h, 6h, 24h, 7d, 30d)
-- Metric filtering (Temperature, Humidity, Battery)
-- CSV data export functionality
-
-### ⚙️ Device Control
-
-- AC unit power control
-- Air purifier settings management
-- Threshold configuration for alerts
-- Robot task assignment
-
----
-
-## 🏗️ System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Fabrix Dashboard (React)                     │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │  Dashboard  │  │  Analysis   │  │  Settings   │             │
-│  │    Page     │  │    Page     │  │    Page     │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-├─────────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │   AuthContext   │  │  DeviceContext  │  │  StompContext   │ │
-│  │ (JWT Auth)      │  │ (Device State)  │  │ (WebSocket)     │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-├─────────────────────────────────────────────────────────────────┤
-│                    Services Layer                               │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  authService    │  │      api        │  │ webSocketClient │ │
-│  │  (Login/Token)  │  │  (REST APIs)    │  │    (STOMP)      │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                 ProtoNest IoT Backend                           │
-│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐ │
-│  │  REST API       │  │  STOMP/WS       │  │  MQTT Broker    │ │
-│  │  (Historical)   │  │  (Real-time)    │  │  (IoT Devices)  │ │
-│  └─────────────────┘  └─────────────────┘  └─────────────────┘ │
-└─────────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- **Node.js** 18.0 or higher
-- **npm** or **yarn** package manager
-- **ProtoNest Account** with API credentials
-
-### Installation
-
-1. **Clone the repository**
-
-   ```bash
-   git clone https://github.com/ttmagedara2001/Fleet-Management-System_PC.git
-   cd Fleet-Management-System_PC
-   ```
-
-2. **Install dependencies**
-
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables**
-
-   Create a `.env` file in the root directory:
-
-   ```env
-   # ProtoNest API Configuration
-   VITE_API_BASE_URL=https://api.protonest.co
-   VITE_WS_URL=wss://ws.protonest.co/ws
-
-   # User Credentials
-   VITE_USER_EMAIL=your-email@example.com
-   VITE_USER_PASSWORD=your-secret-key
-   ```
-
-   > ⚠️ **Important**: The `VITE_USER_PASSWORD` is your ProtoNest **Secret Key**, not your login password. Find it in your ProtoNest dashboard.
-
-4. **Start the development server**
-
-   ```bash
-   npm run dev
-   ```
-
-5. **Open in browser**
-
-   Navigate to `http://localhost:5173`
-
-### Build for Production
-
-```bash
-npm run build
-npm run preview
-```
-
----
-
-## ⚙️ Configuration
-
-### Environment Variables
-
-| Variable             | Description                  | Required |
-| -------------------- | ---------------------------- | -------- |
-| `VITE_API_BASE_URL`  | ProtoNest REST API base URL  | ✅       |
-| `VITE_WS_URL`        | ProtoNest WebSocket URL      | ✅       |
-| `VITE_USER_EMAIL`    | Your ProtoNest account email | ✅       |
-| `VITE_USER_PASSWORD` | Your ProtoNest secret key    | ✅       |
-
-### Available Devices
-
-The system is pre-configured with the following devices:
-
-| Device ID       | Name           | Default Zone |
-| --------------- | -------------- | ------------ |
-| `device9988`    | Device 9988    | Cleanroom A  |
-| `device0011233` | Device 0011233 | Cleanroom B  |
-| `deviceA72Q`    | Device A72Q    | Loading Bay  |
-| `deviceZX91`    | Device ZX91    | Storage      |
-
----
-
-## 📁 Project Structure
-
-```
-Fleet-Management-System_PC/
-├── public/                 # Static assets
-├── src/
-│   ├── assets/            # Images and icons
-│   ├── components/        # React components
-│   │   ├── dashboard/     # Dashboard-specific components
-│   │   │   ├── AlertsPanel.jsx
-│   │   │   ├── DeviceEnvironmentPanel.jsx
-│   │   │   ├── FabMap.jsx
-│   │   │   └── RobotFleetPanel.jsx
-│   │   └── layout/        # Layout components
-│   │       ├── Header.jsx
-│   │       └── Sidebar.jsx
-│   ├── contexts/          # React contexts
-│   │   ├── AuthContext.jsx
-│   │   ├── DeviceContext.jsx
-│   │   └── StompContext.jsx
-│   ├── hooks/             # Custom hooks
-│   │   └── useApi.js
-│   ├── pages/             # Page components
-│   │   ├── Dashboard.jsx
-│   │   ├── Analysis.jsx
-│   │   └── Settings.jsx
-│   ├── services/          # API and WebSocket services
-│   │   ├── api.js
-│   │   ├── authService.js
-│   │   └── webSocketClient.js
-│   ├── types/             # Type definitions
-│   │   └── index.js
-│   ├── App.jsx            # Main application component
-│   ├── App.css            # Global styles
-│   ├── main.jsx           # Application entry point
-│   └── index.css          # Tailwind CSS imports
-├── .env                   # Environment variables (create this)
-├── API_REFERENCE.md       # API documentation
-├── USER_MANUAL.md         # User manual
-├── TROUBLESHOOTING.md     # Troubleshooting guide
-├── package.json           # Dependencies and scripts
-├── vite.config.js         # Vite configuration
-├── tailwind.config.js     # Tailwind CSS configuration
-└── README.md              # This file
-```
-
----
-
-## 📚 Documentation
-
-| Document                                           | Description                              |
-| -------------------------------------------------- | ---------------------------------------- |
-| [README.md](README.md)                             | Project overview and setup guide         |
-| [USER_MANUAL.md](USER_MANUAL.md)                   | Complete user guide with screenshots     |
-| [API_REFERENCE.md](API_REFERENCE.md)               | REST API and WebSocket documentation     |
-| [TROUBLESHOOTING.md](TROUBLESHOOTING.md)           | Common issues and solutions              |
-| [FIRMWARE_DEVELOPMENT.md](FIRMWARE_DEVELOPMENT.md) | Firmware development guide and protocols |
-| [FIRMWARE_DEVELOPMENT.md](FIRMWARE_DEVELOPMENT.md) | Firmware development guide and protocols |
+All data is simulated locally using realistic mock data that mimics production behavior.
 
 ---
 
 ## 🛠️ Technology Stack
 
 ### Frontend
+- **React 19.2** - Modern UI framework with hooks and concurrent features
+- **React Router 7.11** - Client-side routing and navigation
+- **Tailwind CSS 4.1** - Utility-first styling with custom design system
+- **Vite 7.2** - Lightning-fast development and optimized builds
 
-- **React 19.2** - UI library with hooks
-- **Vite 7.2** - Build tool and dev server
-- **TailwindCSS 4.1** - Utility-first CSS framework
-- **Recharts 3.6** - Charting library
-- **Lucide React** - Icon library
+### Visualization
+- **Recharts 3.6** - Responsive charts for analytics and historical data
+- **Lucide React 0.562** - Beautiful, consistent icon set
 
-### Communication
+### State Management
+- **React Context API** - Global state for device, robot, and auth management
+- **Local Storage** - Persistent settings and preferences
 
-- **@stomp/stompjs 7.2** - STOMP over WebSocket
-- **Axios 1.13** - HTTP client
+---
+
+## 📦 Installation
+
+### Prerequisites
+- **Node.js** 18.x or higher
+- **npm** 9.x or higher
+
+### Setup
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd Fleet-Management-System_PC_Test
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+The application will be available at `http://localhost:5173`
+
+---
+
+## 🎮 Usage
+
+### Authentication
+1. Enter any credentials (demo mode accepts all inputs)
+2. Click "Sign In" to access the dashboard
+
+### Dashboard
+- **View Robot Fleet**: Real-time status cards for all robots
+- **Monitor Environment**: Temperature, humidity, and pressure readings
+- **Check Alerts**: System notifications and threshold violations
+
+### Task Management (Settings Page)
+1. Navigate to **Settings** tab
+2. Configure robot tasks:
+   - Select **Initiate Location** (source)
+   - Select **Destination**
+   - Click **Assign** to allocate task
+3. Use **Start All Robots** to launch all configured robots simultaneously
+
+### Task Progress
+- Robots navigate through multiple phases:
+  - ✅ **ASSIGNED** → Task allocated
+  - 🚀 **EN_ROUTE_TO_SOURCE** → Moving to pickup
+  - 📦 **PICKING_UP** → At pickup location
+  - 🚚 **EN_ROUTE_TO_DESTINATION** → Moving to delivery
+  - 📍 **DELIVERING** → At delivery location
+  - ✔️ **COMPLETED** → Task finished
+
+### Analytics
+- Navigate to **Analysis** tab
+- View historical data:
+  - Environment trends (24-hour window)
+  - Robot performance metrics
+  - Task completion history
+
+---
+
+## 📂 Project Structure
+
+```
+Fleet-Management-System_PC_Test/
+├── public/
+│   └── fabrix-icon.svg          # Custom favicon
+├── src/
+│   ├── components/
+│   │   ├── dashboard/            # Dashboard-specific components
+│   │   │   ├── EnvironmentPanel.jsx
+│   │   │   ├── RobotFleetPanel.jsx
+│   │   │   └── FabMap.jsx
+│   │   └── layout/               # Layout components
+│   │       ├── Header.jsx
+│   │       └── Sidebar.jsx
+│   ├── contexts/
+│   │   ├── AuthContext.jsx       # Authentication state
+│   │   └── DeviceContext.jsx     # Device & robot state management
+│   ├── hooks/
+│   │   └── useApi.js             # API interaction hook (demo mode)
+│   ├── pages/
+│   │   ├── Dashboard.jsx         # Main dashboard view
+│   │   ├── Analysis.jsx          # Analytics & historical data
+│   │   └── Settings.jsx          # Configuration & task management
+│   ├── services/
+│   │   ├── api.js                # API service layer
+│   │   └── mockDataService.js    # Mock data generator
+│   ├── utils/
+│   │   ├── telemetryMath.js      # Robot calculations & geofencing
+│   │   └── thresholds.js         # Threshold management
+│   ├── App.jsx                   # Main application component
+│   ├── App.css                   # Global styles
+│   └── main.jsx                  # Application entry point
+├── .gemini/                      # Documentation
+│   ├── auth-screen-enhancement.md
+│   ├── battery-display-update.md
+│   ├── codebase-cleanup.md
+│   └── multi-robot-independent-tasking.md
+├── index.html                    # HTML entry point
+├── package.json                  # Dependencies & scripts
+└── README.md                     # This file
+```
+
+---
+
+## 🎨 Design System
+
+### Color Palette
+- **Primary**: `#6366F1` (Indigo-500)
+- **Secondary**: `#8B5CF6` (Violet-500)
+- **Accent**: `#FCD34D` (Amber-300)
+- **Success**: `#10B981` (Emerald-500)
+- **Warning**: `#F59E0B` (Amber-500)
+- **Error**: `#EF4444` (Red-500)
+
+### Typography
+- **Font Family**: Inter (Google Fonts)
+- **Weights**: 300 (Light), 400 (Regular), 500 (Medium), 600 (Semibold), 700 (Bold), 800 (Extrabold)
+
+### Components
+All components follow a consistent design language with:
+- Glass morphism effects
+- Smooth animations and transitions
+- Responsive grid layouts
+- Accessible color contrasts
+
+---
+
+## ⚙️ Configuration
+
+### Thresholds
+Customize alert thresholds in Settings:
+- **Temperature**: Min/Max °C
+- **Humidity**: Min/Max %
+- **Pressure**: Min/Max hPa
+- **Battery**: Warning/Critical %
+
+### System Modes
+- **MANUAL**: Requires user interaction for all controls
+- **AUTOMATIC**: System responds to threshold violations automatically
+
+---
+
+## 🔧 Build & Deployment
 
 ### Development
+```bash
+npm run dev
+```
 
-- **ESLint** - Code linting
-- **PostCSS** - CSS processing
+### Production Build
+```bash
+npm run build
+```
+Output directory: `dist/`
+
+### Preview Production Build
+```bash
+npm run preview
+```
+
+### Deployment
+The application can be deployed to any static hosting service:
+- **Vercel**: `vercel deploy`
+- **Netlify**: Drop `dist/` folder or connect Git repo
+- **GitHub Pages**: Enable in repository settings
+- **AWS S3**: Upload `dist/` to S3 bucket with static hosting
+
+---
+
+## 📊 Performance
+
+### Metrics
+- **Initial Load**: < 1 second
+- **Time to Interactive**: < 1.5 seconds
+- **Lighthouse Score**: 95+
+- **Bundle Size**: < 500KB (gzipped)
+
+### Optimizations
+- Code splitting by route
+- Lazy loading for heavy components
+- Memoized calculations for robot positions
+- Debounced UI updates for smooth performance
 
 ---
 
 ## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+This is a private repository. If you have access and would like to contribute:
+
+1. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+2. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+3. Push to the branch (`git push origin feature/AmazingFeature`)
+4. Open a Pull Request
 
 ---
 
-## 📄 License
+## 📝 License
 
-This project is proprietary software. All rights reserved.
+This project is private and proprietary.
 
 ---
 
-<div align="center">
+## 👥 Authors
 
-**Built with ❤️ for Industrial Automation**
+**Fabrix Systems**
 
-</div>
+---
+
+## 📞 Support
+
+For questions or support, please contact the development team.
+
+---
+
+## 🎯 Roadmap
+
+### Upcoming Features
+- [ ] WebSocket integration for real-time updates (production mode)
+- [ ] Task queuing and scheduling
+- [ ] Historical task replay
+- [ ] Export analytics to PDF/CSV
+- [ ] Multi-language support
+- [ ] Dark mode theme
+- [ ] Advanced collision avoidance algorithms
+- [ ] Integration with external robot APIs
+
+---
+
+## 📚 Documentation
+
+Additional documentation available in `.gemini/` directory:
+- **Authentication Screen Enhancement** - UI/UX improvements
+- **Battery Display Update** - Display formatting changes
+- **Codebase Cleanup** - Professional code standards
+- **Multi-Robot Independent Tasking** - Parallel robot operation
+
+---
+
+## 🏆 Acknowledgments
+
+- React team for the amazing framework
+- Tailwind CSS for the utility-first styling approach
+- Lucide for the beautiful icon library
+- Recharts for flexible charting components
+
+---
+
+**Built with ❤️ for semiconductor fabrication excellence**

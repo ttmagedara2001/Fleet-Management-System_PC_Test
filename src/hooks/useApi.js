@@ -87,7 +87,6 @@ export function useApi() {
 
   const emergencyStop = useCallback(
     async (deviceId) => {
-      console.log('[API Hook] 🚨 EMERGENCY STOP (Demo):', deviceId);
       return updateDeviceState(deviceId, 'fleetMS/emergencyStop', {
         emergency_stop: true,
         timestamp: new Date().toISOString(),
@@ -98,7 +97,6 @@ export function useApi() {
 
   const emergencyClear = useCallback(
     async (deviceId) => {
-      console.log('[API Hook] 🔁 CLEAR EMERGENCY (Demo):', deviceId);
       return updateDeviceState(deviceId, 'fleetMS/emergencyStop', {
         emergency_stop: false,
         timestamp: new Date().toISOString(),
@@ -109,7 +107,6 @@ export function useApi() {
 
   const controlAC = useCallback(
     async (deviceId, state) => {
-      console.log('[API Hook] ❄️ AC control (Demo):', state);
       return updateDeviceState(deviceId, 'control/ac', {
         ac_power: state ? 'ON' : 'OFF',
       });

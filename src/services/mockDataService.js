@@ -186,8 +186,8 @@ function ensureRobotState(deviceId) {
         },
         status: {
           battery: rand(45, 100, 0),
-          load: pick(['None', 'Package A', 'Package B', 'None']),
-          state: pick(['READY', 'ACTIVE', 'READY', 'READY']),
+          load: 'None',
+          state: 'IDLE', // All robots start idle until tasks are assigned
         },
         'robot-status': 'online',
         robotStatus: 'online',
@@ -236,17 +236,19 @@ export function tickRobots(deviceId) {
         // Calculate heading toward target
         const headingRad = Math.atan2(dLng, dLat);
         robot.heading = +((headingRad * 180 / Math.PI + 360) % 360).toFixed(0);
+        
+        // Update robot state to MOVING when navigating
+        robot.status.state = 'MOVING';
       } else {
-        // No valid target, random drift
-        robot.location.lat = drift(robot.location.lat, 0.00008, 37.4215, 37.423, 6);
-        robot.location.lng = drift(robot.location.lng, 0.00008, -122.085, -122.083, 6);
-        robot.heading = drift(robot.heading, 15, 0, 360, 0);
+        // No valid target - keep robot stationary (no movement)
+        // Robot stays at current position when task phase doesn't require movement
+        robot.status.state = 'ACTIVE'; // At pickup/delivery point
       }
     } else {
-      // ── NO TASK: random drift ──
-      robot.location.lat = drift(robot.location.lat, 0.00008, 37.4215, 37.423, 6);
-      robot.location.lng = drift(robot.location.lng, 0.00008, -122.085, -122.083, 6);
-      robot.heading = drift(robot.heading, 15, 0, 360, 0);
+      // ── NO TASK: Robot remains stationary (IDLE) ──
+      // Robots do not move when they don't have tasks assigned
+      // Position, heading remain unchanged
+      robot.status.state = 'IDLE';
     }
 
     // Drift battery (slow drain) - always round to whole number

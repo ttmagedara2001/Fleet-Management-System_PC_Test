@@ -6,16 +6,19 @@
  */
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
-    Download,
     RefreshCw,
     Thermometer,
-    Droplets,
     Battery,
     Loader2,
     Clock,
     AlertCircle,
     Bot,
-    Trash2
+    Trash2,
+    Calendar,
+    FileDown,
+    X,
+    Sliders,
+    FileText
 } from 'lucide-react';
 import {
     LineChart,
@@ -34,6 +37,7 @@ import { getDeviceStreamData, getTopicStreamData, getDeviceStateDetails, updateS
 import { getRobotsForDevice } from '../config/robotRegistry';
 import { TASK_PHASES, PHASE_LABELS, PHASE_COLORS, computePhaseProgress, findRoomAtPoint, ROOMS } from '../utils/telemetryMath';
 import { getThresholds as getThresholdsShared } from '../utils/thresholds';
+import { generateEnvHistory, generateRobotHistory } from '../services/mockDataService';
 
 function Analysis() {
     const { selectedDeviceId, currentRobots, taskUpdateVersion, fetchRobotTasks, getLocalTaskHistory } = useDevice();
@@ -745,32 +749,361 @@ function Analysis() {
         }));
     };
 
-    const handleExportCSV = () => {
-        if (chartData.length === 0) {
-            alert('No data to export');
-            return;
-        }
+    // ── Export Modal State ────────────────────────────────────────────────────
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [exportConfig, setExportConfig] = useState({
+        datasets: { environment: true, robotHistory: true, taskHistory: true },
+        timeRange: '24h',
+        intervalMin: 5,
+    });
+    const [exportLoading, setExportLoading] = useState(false);
 
-        const headers = ['Time', 'Full Timestamp', 'Temperature (°C)', 'Humidity (%)', 'Pressure (hPa)'];
-        const rows = chartData.map(row => [
-            row.time,
-            row.fullTime,
-            row.temp ?? '',
-            row.humidity ?? '',
-            row.pressure ?? ''
-        ]);
+    const TIME_RANGE_OPTIONS = [
+        { label: 'Last 1 Hour',   value: '1h'  },
+        { label: 'Last 6 Hours',  value: '6h'  },
+        { label: 'Last 12 Hours', value: '12h' },
+        { label: 'Last 24 Hours', value: '24h' },
+        { label: 'Last 7 Days',   value: '7d'  },
+    ];
 
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
+    const INTERVAL_OPTIONS = [
+        { label: '30 Seconds', value: 0.5  },
+        { label: '1 Minute',   value: 1    },
+        { label: '5 Minutes',  value: 5    },
+        { label: '15 Minutes', value: 15   },
+        { label: '30 Minutes', value: 30   },
+        { label: '1 Hour',     value: 60   },
+    ];
 
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${selectedDeviceId}_data.csv`;
-        link.click();
+    // Compute preview record counts when config changes
+    const exportPreview = useMemo(() => {
+        const match = exportConfig.timeRange.match(/^(\d+(?:\.\d+)?)\s*([hd])$/i);
+        let hours = 6;
+        if (match) hours = parseFloat(match[1]) * (match[2].toLowerCase() === 'd' ? 24 : 1);
+        const count  = Math.min(Math.ceil(hours * 60 / exportConfig.intervalMin), 2000);
+        const taskCount = Object.values(robotTaskMap).reduce((s, arr) => s + arr.length, 0);
+        return { envPoints: count, robotPoints: count * deviceRobots.length, taskCount, hours };
+    }, [exportConfig, deviceRobots, robotTaskMap]);
+
+    // ── CSV date/time helpers ─────────────────────────────────────────────────
+    const _pad = n => String(n).padStart(2, '0');
+    const _fmtDateTime = ts => {
+        const d = new Date(ts);
+        return `${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())} ${_pad(d.getHours())}:${_pad(d.getMinutes())}:${_pad(d.getSeconds())}`;
     };
+    const _fmtDate = ts => {
+        const d = new Date(ts);
+        return `${d.getFullYear()}-${_pad(d.getMonth()+1)}-${_pad(d.getDate())}`;
+    };
+    const _fmtTime = ts => {
+        const d = new Date(ts);
+        return `${_pad(d.getHours())}:${_pad(d.getMinutes())}:${_pad(d.getSeconds())}`;
+    };
+    const _fmtElapsed = ms => {
+        if (!ms) return '';
+        const s = Math.floor(ms / 1000);
+        if (s < 60) return `${s}s`;
+        const m = Math.floor(s / 60);
+        if (m < 60) return `${m}m ${s % 60}s`;
+        return `${Math.floor(m / 60)}h ${m % 60}m`;
+    };
+
+    // ── Generate and download the CSV ─────────────────────────────────────────
+    const handleGenerateExport = async () => {
+        setExportLoading(true);
+        try {
+            const { timeRange: tr, intervalMin, datasets } = exportConfig;
+            const match = tr.match(/^(\d+(?:\.\d+)?)\s*([hd])$/i);
+            let hours = 6;
+            if (match) hours = parseFloat(match[1]) * (match[2].toLowerCase() === 'd' ? 24 : 1);
+            const count  = Math.min(Math.ceil(hours * 60 / intervalMin), 2000);
+
+            const now    = Date.now();
+            const startMs = now - hours * 3600 * 1000;
+            const rangeLabel    = TIME_RANGE_OPTIONS.find(o => o.value === tr)?.label    || tr;
+            const intervalLabel = INTERVAL_OPTIONS.find(o => o.value === intervalMin)?.label || `${intervalMin} min`;
+
+            const lines = [];
+            const SEP  = '='.repeat(65);
+            const SEP2 = '-'.repeat(65);
+
+            // ── Metadata header ──────────────────────────────────────────────
+            lines.push(SEP);
+            lines.push('FABRIX FLEET MANAGEMENT SYSTEM -- HISTORICAL DATA EXPORT');
+            lines.push(SEP);
+            lines.push(`Device ID:,${selectedDeviceId}`);
+            lines.push(`Time Range:,"${rangeLabel}  (${_fmtDateTime(startMs)}  to  ${_fmtDateTime(now)})"`);
+            lines.push(`Data Interval:,${intervalLabel}`);
+            lines.push(`Generated At:,${_fmtDateTime(now)}`);
+            lines.push(`Generated By:,Fabrix Fleet Management System v1.0 (Demo Mode - Frontend Only)`);
+            lines.push('');
+
+            // ── Section 1: Environment Trends ────────────────────────────────
+            if (datasets.environment) {
+                const envHistory = generateEnvHistory(selectedDeviceId, hours, count);
+                lines.push(SEP2);
+                lines.push('SECTION 1 OF 3: ENVIRONMENT TRENDS');
+                lines.push(SEP2);
+                lines.push(`Records: ${envHistory.length}  |  Source: Ambient sensors`);
+                lines.push('');
+                lines.push('Timestamp (UTC),Date,Time (24h),Temperature (Celsius),Humidity (%),Pressure (hPa),Temp Condition,Humidity Condition');
+                envHistory.forEach(p => {
+                    const tempCond = p.temperature > 35 ? 'High' : p.temperature < 18 ? 'Low' : 'Normal';
+                    const humCond  = p.humidity > 70 ? 'High'    : p.humidity < 20 ? 'Low'    : 'Normal';
+                    lines.push([
+                        `"${_fmtDateTime(p.ts)}"`,
+                        _fmtDate(p.ts),
+                        _fmtTime(p.ts),
+                        p.temperature.toFixed(1),
+                        p.humidity.toFixed(1),
+                        p.pressure.toFixed(0),
+                        tempCond,
+                        humCond,
+                    ].join(','));
+                });
+                lines.push('');
+            }
+
+            // ── Section 2: Robot Sensor History ──────────────────────────────
+            if (datasets.robotHistory) {
+                const robHistory = generateRobotHistory(selectedDeviceId, hours, count);
+                lines.push(SEP2);
+                lines.push('SECTION 2 OF 3: ROBOT SENSOR HISTORY');
+                lines.push(SEP2);
+                lines.push(`Robots: ${deviceRobots.map(r => r.name).join(', ')}  |  Records per robot: up to ${count}`);
+                lines.push('');
+                lines.push('Timestamp (UTC),Date,Time (24h),Robot ID,Robot Name,Zone,Battery (%),Temperature (Celsius),Battery Status');
+                deviceRobots.forEach(robot => {
+                    const series = robHistory[robot.id] || [];
+                    const grouped = {};
+                    series.forEach(p => {
+                        const key = Math.floor(p.ts / (intervalMin * 60000));
+                        if (!grouped[key]) grouped[key] = { ts: p.ts };
+                        if (p.metric === 'battery') grouped[key].battery = p.value;
+                        if (p.metric === 'temp')    grouped[key].temp    = p.value;
+                    });
+                    Object.values(grouped)
+                        .sort((a, b) => a.ts - b.ts)
+                        .forEach(p => {
+                            const batStatus = p.battery != null
+                                ? p.battery < 15 ? 'Critical Low'
+                                : p.battery < 30 ? 'Low'
+                                : p.battery < 50 ? 'Moderate'
+                                : 'Good'
+                                : '';
+                            lines.push([
+                                `"${_fmtDateTime(p.ts)}"`,
+                                _fmtDate(p.ts),
+                                _fmtTime(p.ts),
+                                robot.id,
+                                `"${robot.name}"`,
+                                `"${robot.zone || ''}"`,
+                                p.battery != null ? p.battery.toFixed(0) : '',
+                                p.temp    != null ? p.temp.toFixed(1)    : '',
+                                batStatus,
+                            ].join(','));
+                        });
+                });
+                lines.push('');
+            }
+
+            // ── Section 3: Task History Table ─────────────────────────────────
+            if (datasets.taskHistory) {
+                const allTasks = [];
+                deviceRobots.forEach(robot => {
+                    (robotTaskMap[robot.id] || []).forEach(t => {
+                        allTasks.push({ ...t, _robotName: robot.name, _robotId: robot.id });
+                    });
+                });
+                allTasks.sort((a, b) => (b.allocatedAt || b.timestamp) - (a.allocatedAt || a.timestamp));
+                lines.push(SEP2);
+                lines.push('SECTION 3 OF 3: TASK HISTORY (LAST 24 HOURS)');
+                lines.push(SEP2);
+                lines.push(`Total task records: ${allTasks.length}`);
+                lines.push('');
+                lines.push(
+                    'Robot Name,Robot ID,Task ID,Task Name,Status,Phase,Progress (%),' +
+                    'Source Location,Destination Location,Allocated At,Elapsed Time'
+                );
+                allTasks.forEach(t => {
+                    lines.push([
+                        `"${t._robotName || ''}"`,
+                        t._robotId || '',
+                        `"${t.taskId || ''}"`,
+                        `"${t.taskName || ''}"`,
+                        `"${t.status  || ''}"`,
+                        `"${t.phase   || ''}"`,
+                        t.progress != null ? t.progress : '',
+                        `"${t.sourceLocation      || ''}"`,
+                        `"${t.destinationLocation || ''}"`,
+                        t.allocatedAt ? `"${_fmtDateTime(t.allocatedAt)}"` : '',
+                        _fmtElapsed(t.elapsedMs),
+                    ].join(','));
+                });
+                lines.push('');
+            }
+
+            // ── Footer ───────────────────────────────────────────────────────
+            lines.push(SEP);
+            lines.push(`END OF REPORT  |  Fabrix Fleet Management System  |  ${_fmtDate(now)}`);
+            lines.push(SEP);
+
+            // BOM ensures Microsoft Excel opens the UTF-8 file correctly
+            const BOM = '\uFEFF';
+            const csvContent = BOM + lines.join('\r\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+            const dateTag  = _fmtDate(now).replace(/-/g, '');
+            const fileName = `fabrix_${selectedDeviceId}_${tr}_${dateTag}.csv`;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+            setExportModalOpen(false);
+        } catch (err) {
+            console.error('[Analysis] Export failed:', err);
+            alert('Export failed. Please try again.');
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
+    // ── Export Modal component (rendered inline in JSX via portal-like pattern) ──
+    function ExportModal() {
+        if (!exportModalOpen) return null;
+        const { datasets, timeRange, intervalMin } = exportConfig;
+        return (
+            <div className="export-modal-overlay" role="dialog" aria-modal="true" aria-label="Export Historical Data" onClick={() => setExportModalOpen(false)}>
+                <div className="export-modal" onClick={e => e.stopPropagation()}>
+                    <div className="export-modal__header">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <FileDown size={20} style={{ color: '#6366F1' }} />
+                            <h2 className="export-modal__title">Export Historical Data</h2>
+                        </div>
+                        <button onClick={() => setExportModalOpen(false)} className="export-modal__close" aria-label="Close">
+                            <X size={18} />
+                        </button>
+                    </div>
+
+                    <div className="export-modal__body">
+                        {/* Dataset selection */}
+                        <div className="export-modal__section">
+                            <h3 className="export-modal__section-title">
+                                <Sliders size={14} style={{ display: 'inline', marginRight: 6 }} />
+                                Select Datasets
+                            </h3>
+                            {[
+                                { key: 'environment',  label: 'Environment Trends',      desc: 'Temperature, Humidity & Pressure over time' },
+                                { key: 'robotHistory', label: 'Robot Sensor History',    desc: 'Battery & Temperature per robot over time'  },
+                                { key: 'taskHistory',  label: 'Task History Table',      desc: 'All robot task records from the last 24 hours' },
+                            ].map(opt => (
+                                <label key={opt.key} className="export-modal__checkbox-row">
+                                    <input
+                                        type="checkbox"
+                                        checked={datasets[opt.key]}
+                                        onChange={e => setExportConfig(prev => ({
+                                            ...prev,
+                                            datasets: { ...prev.datasets, [opt.key]: e.target.checked }
+                                        }))}
+                                        className="export-modal__checkbox"
+                                    />
+                                    <div>
+                                        <div className="export-modal__checkbox-label">{opt.label}</div>
+                                        <div className="export-modal__checkbox-desc">{opt.desc}</div>
+                                    </div>
+                                </label>
+                            ))}
+                        </div>
+
+                        {/* Time range + Interval */}
+                        <div className="export-modal__section">
+                            <h3 className="export-modal__section-title">
+                                <Calendar size={14} style={{ display: 'inline', marginRight: 6 }} />
+                                Time Range &amp; Interval
+                            </h3>
+                            <div className="export-modal__row">
+                                <div className="export-modal__field">
+                                    <label className="export-modal__field-label">Time Range</label>
+                                    <select
+                                        className="export-modal__select"
+                                        value={timeRange}
+                                        onChange={e => setExportConfig(prev => ({ ...prev, timeRange: e.target.value }))}
+                                    >
+                                        {TIME_RANGE_OPTIONS.map(o => (
+                                            <option key={o.value} value={o.value}>{o.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="export-modal__field">
+                                    <label className="export-modal__field-label">Data Interval</label>
+                                    <select
+                                        className="export-modal__select"
+                                        value={intervalMin}
+                                        onChange={e => setExportConfig(prev => ({ ...prev, intervalMin: Number(e.target.value) }))}
+                                    >
+                                        {INTERVAL_OPTIONS.map(o => (
+                                            <option key={o.value} value={o.value}>{o.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Preview */}
+                        <div className="export-modal__preview">
+                            <h3 className="export-modal__section-title" style={{ marginBottom: '10px' }}>
+                                <FileText size={14} style={{ display: 'inline', marginRight: 6 }} />
+                                Export Preview
+                            </h3>
+                            <div className="export-modal__preview-grid">
+                                {datasets.environment && (
+                                    <div className="export-modal__preview-chip export-modal__preview-chip--env">
+                                        <span className="export-modal__preview-num">{exportPreview.envPoints.toLocaleString()}</span>
+                                        <span className="export-modal__preview-lbl">Environment<br />Points</span>
+                                    </div>
+                                )}
+                                {datasets.robotHistory && (
+                                    <div className="export-modal__preview-chip export-modal__preview-chip--robot">
+                                        <span className="export-modal__preview-num">{exportPreview.robotPoints.toLocaleString()}</span>
+                                        <span className="export-modal__preview-lbl">Robot Records<br />({deviceRobots.length} robots)</span>
+                                    </div>
+                                )}
+                                {datasets.taskHistory && (
+                                    <div className="export-modal__preview-chip export-modal__preview-chip--task">
+                                        <span className="export-modal__preview-num">{exportPreview.taskCount}</span>
+                                        <span className="export-modal__preview-lbl">Task<br />Entries</span>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="export-modal__preview-note">
+                                The CSV includes a metadata header, column subheadings with measurement units, and an end-of-report footer.
+                                Saved as <strong>UTF-8 with BOM</strong> — opens correctly in Microsoft Excel, Google Sheets, and any CSV editor.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="export-modal__footer">
+                        <button className="export-modal__cancel-btn" onClick={() => setExportModalOpen(false)}>
+                            Cancel
+                        </button>
+                        <button
+                            className="export-modal__download-btn"
+                            onClick={handleGenerateExport}
+                            disabled={exportLoading || !Object.values(datasets).some(Boolean)}
+                        >
+                            {exportLoading
+                                ? <><Loader2 size={16} className="animate-spin" style={{ marginRight: 6 }} /> Generating...</>
+                                : <><FileDown size={16} style={{ marginRight: 6 }} /> Download CSV</>
+                            }
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const metricColors = { temp: '#D97706', humidity: '#059669', battery: '#7C3AED', pressure: '#3B82F6' };
 
@@ -880,8 +1213,8 @@ function Analysis() {
                     <button className="analysis-export-btn" onClick={fetchData} disabled={isLoading} aria-label="Refresh">
                         <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
                     </button>
-                    <button className="analysis-export-btn" onClick={handleExportCSV}>
-                        <Download size={14} /> Export CSV
+                    <button className="analysis-export-btn analysis-export-btn--primary" onClick={() => setExportModalOpen(true)} title="Export all charts and task history to CSV">
+                        <FileDown size={14} style={{ marginRight: 4 }} /> Export Data
                     </button>
                     <select className="analysis-select" value={timeRange} onChange={(e) => setTimeRange(e.target.value)}>
                         <option value="1h">1h</option>
@@ -1236,6 +1569,9 @@ function Analysis() {
                     })
                 )}
             </div>
+
+            {/* Smart Export Modal */}
+            <ExportModal />
         </div>
     );
 }

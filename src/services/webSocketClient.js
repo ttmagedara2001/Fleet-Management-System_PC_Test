@@ -1,31 +1,33 @@
 /**
- * WebSocket Client — DEMO MODE
- *
- * Replaces the real STOMP/WebSocket connection with a simulated
- * data stream powered by MockDataService. No network connections
- * are opened. Data is generated locally on timers.
- *
  * @module webSocketClient
+ * @description Frontend-independent WebSocket / real-time data client.
+ *
+ * In DEMO mode this module delegates to the mock WebSocket simulator in
+ * mockDataService, which produces realistic periodic push events without
+ * opening any real network connections.
+ *
+ * To connect a real STOMP / native WebSocket broker in production, replace
+ * the body of `connectWebSocket` below while keeping the same interface.
+ *
+ * @interface WebSocketHandle
+ * @property {function} deactivate - Stop the connection and clean up timers.
  */
 
-import { mockConnectWebSocket } from './mockDataService';
+import { mockConnectWebSocket } from "./mockDataService";
 
 /**
- * Connects to a simulated WebSocket.
+ * Open (or simulate) a WebSocket connection for a device.
  *
- * @param {string} deviceId       - Device to subscribe to.
- * @param {function} onStream     - Callback for stream data
- * @param {function} onState      - Callback for state data
- * @param {function} onConnected  - Callback when "connected"
- * @param {function} onDisconnected - Callback on "disconnect"
- * @returns {{ deactivate: () => void }} Mock client with cleanup
+ * @param {string}   deviceId       - The device to subscribe to.
+ * @param {function} onStream       - Called with each incoming stream message.
+ * @param {function} onState        - Called with each device state update.
+ * @param {function} onConnected    - Called once when the connection is ready.
+ * @param {function} onDisconnected - Called when the connection closes.
+ *
+ * @returns {{ deactivate: function }} - Call .deactivate() to stop the client.
  */
-export function connectWebSocket(
-  deviceId,
-  onStream,
-  onState,
-  onConnected,
-  onDisconnected,
-) {
+export function connectWebSocket(deviceId, onStream, onState, onConnected, onDisconnected) {
   return mockConnectWebSocket(deviceId, onStream, onState, onConnected, onDisconnected);
 }
+
+export default { connectWebSocket };

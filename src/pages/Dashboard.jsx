@@ -699,7 +699,8 @@ function RobotDetails() {
             const progress = task.progress;
 
             return (
-                <div style={{ marginTop: '4px' }}>
+                // key forces clean remount (resets CSS transition from 0) whenever task changes
+                <div key={task.task_id || task.taskId || String(task.assignedAt) || 'task'} style={{ marginTop: '4px' }}>
                     <span className="task-status-badge" style={{ background: colors.bg, color: colors.color }}>
                         {PHASE_LABELS[phase]}
                     </span>

@@ -52,7 +52,7 @@ function AlertsPanel() {
             </div>
 
             {/* Alerts List */}
-            <div className="p-4 max-h-[300px] overflow-y-auto">
+            <div className="p-4 max-h-75 overflow-y-auto">
                 {alerts.length > 0 ? (
                     <div className="space-y-2">
                         {alerts.slice(0, 10).map(alert => (
@@ -63,7 +63,7 @@ function AlertsPanel() {
                                 <div className="flex items-start gap-2">
                                     <AlertTriangle
                                         size={16}
-                                        className={`mt-0.5 flex-shrink-0 ${alert.type === 'critical' ? 'text-red-500' : 'text-amber-500'}`}
+                                        className={`mt-0.5 shrink-0 ${alert.type === 'critical' ? 'text-red-500' : 'text-amber-500'}`}
                                     />
                                     <div>
                                         <p className="text-sm font-medium text-gray-900">{alert.message}</p>
@@ -76,7 +76,7 @@ function AlertsPanel() {
                                 </div>
                                 <button
                                     onClick={() => clearAlert(alert.id)}
-                                    className="p-1 hover:bg-white rounded transition-colors flex-shrink-0"
+                                    className="p-1 hover:bg-white rounded transition-colors shrink-0"
                                 >
                                     <X size={14} className="text-gray-400" />
                                 </button>

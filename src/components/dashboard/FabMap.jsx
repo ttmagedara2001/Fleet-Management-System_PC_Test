@@ -110,14 +110,15 @@ function RobotMarker({ robot, isSelected, onClick, markerSize = 18 }) {
                 cx={Math.max(8, Math.floor(markerSize * 0.7))}
                 cy={-Math.max(8, Math.floor(markerSize * 0.7))}
                 r={markerSize > 14 ? 5 : 4}
-                // Turn only this small status dot green when recent stream data updated the robot
+                // Status dot: green while data is fresh, red on error, gray otherwise.
+                // 20 s window matches the ~15 s round-robin gap (5 robots × 3 s tick).
                 fill={(function() {
                     const last = robot.lastUpdate || 0;
-                    const justUpdated = Date.now() - last < 3000; // 3s window
-                    if (justUpdated) return '#22c55e'; // green
+                    const justUpdated = Date.now() - last < 20000; // 20 s covers the round-robin cycle
+                    if (justUpdated) return '#22c55e'; // green — recently received data
                     const state = robot.status?.state;
                     if (state === 'ERROR' || state === 'STOPPED') return '#ef4444'; // red for errors
-                    return '#9ca3af'; // neutral gray when not freshly updated
+                    return '#9ca3af'; // neutral gray when no recent update
                 })()}
                 stroke="white"
                 strokeWidth={1.5}
@@ -347,7 +348,7 @@ function FabMap() {
             </div>
 
             {/* SVG Map */}
-            <div className="relative bg-gradient-to-br from-gray-50 to-gray-100">
+            <div className="relative bg-linear-to-br from-gray-50 to-gray-100">
                 {!(isMobile && isPortrait) ? (
                     <svg
                         viewBox={`0 0 ${mapDimensions.width} ${mapDimensions.height}`}
@@ -519,7 +520,7 @@ function FabMap() {
 
                 {/* Robot Info Overlay */}
                 {selectedRobot && (
-                    <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 min-w-[200px] border border-gray-200">
+                    <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-lg p-4 min-w-50 border border-gray-200">
                         <div className="flex items-center justify-between mb-2">
                             <h4 className="font-semibold text-gray-900">{selectedRobot.id}</h4>
                             <button

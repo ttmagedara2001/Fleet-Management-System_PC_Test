@@ -78,12 +78,14 @@ function RobotCard({ robot }) {
 
     const getDotColor = (severity) => severity === 'critical' ? '#DC2626' : '#16A34A';
 
-    // Determine whether the robot is actively receiving sensor/stream data (fresh lastUpdate)
+    // Determine whether the robot is actively receiving sensor/stream data (fresh lastUpdate).
+    // With 5 robots on a 3 s round-robin, each robot gets a WS update roughly every 15 s.
+    // Using a 20 s window ensures the dot stays green between cycles.
     const isReceivingData = (() => {
         const last = robot.lastUpdate || 0;
         if (!last) return false;
         const ageMs = Date.now() - last;
-        return ageMs < 3000; // treat as receiving if updated within last 3s
+        return ageMs < 20000; // 20 s covers the ~15 s round-robin gap
     })();
 
     // Connection indicator now depends ONLY on recent data receipt: green when receiving, red otherwise
@@ -211,7 +213,9 @@ function RobotCard({ robot }) {
 
             {/* Task Status */}
             {robot.task && (
-                <div className="mt-0.5 pt-0.5 md:mt-1 md:pt-1 border-t border-gray-100 fleet-task-status">
+                // key forces remount (cleans stale UI) whenever task_id changes
+                <div key={robot.task.task_id || robot.task.taskId || String(robot.task.assignedAt) || 'task'}
+                    className="mt-0.5 pt-0.5 md:mt-1 md:pt-1 border-t border-gray-100 fleet-task-status">
                     {/* Status indicator */}
                     {(() => {
                         const phase = robot.task.phase || 'ASSIGNED';

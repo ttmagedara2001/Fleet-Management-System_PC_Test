@@ -135,6 +135,11 @@ export function DeviceProvider({ children }) {
         return robotState;
     });
 
+    // Stable ref so polling effects can read robot IDs without triggering dep-array re-registration.
+    // This prevents the poller from restarting on every 3-second WebSocket robot location update.
+    const robotsRef = useRef(null);
+    useEffect(() => { robotsRef.current = robots; }, [robots]);
+
     const [alerts, setAlerts] = useState(() => {
         try {
             const saved = localStorage.getItem('fabrix_alerts');
@@ -378,6 +383,10 @@ export function DeviceProvider({ children }) {
 
     // Handle device temperature updates
     const handleTemperatureUpdate = useCallback((deviceId, payload) => {
+        // Compute severity outside setState so the updater stays pure — no closure over stale state.
+        const severity = computeEnvSeverity(payload);
+
+        // Single setState call: merges env values + severity to prevent a double re-render per tick.
         setDeviceData(prev => ({
             ...prev,
             [deviceId]: {
@@ -386,7 +395,8 @@ export function DeviceProvider({ children }) {
                     ...prev[deviceId]?.environment,
                     ambient_temp: payload.temperature ?? payload.temp ?? payload.ambient_temp ?? prev[deviceId]?.environment?.ambient_temp,
                     ambient_hum: payload.humidity ?? payload.ambient_hum ?? prev[deviceId]?.environment?.ambient_hum,
-                    atmospheric_pressure: payload.pressure ?? payload.atmospheric_pressure ?? prev[deviceId]?.environment?.atmospheric_pressure
+                    atmospheric_pressure: payload.pressure ?? payload.atmospheric_pressure ?? prev[deviceId]?.environment?.atmospheric_pressure,
+                    severity,
                 },
                 lastUpdate: Date.now()
             }
@@ -394,21 +404,6 @@ export function DeviceProvider({ children }) {
 
         // Append to environment history for analysis
         try { addEnvHistory(deviceId, payload); } catch (e) { /* ignore */ }
-
-        // Store computed severity flags in device state for UI coloring
-        try {
-            const severity = computeEnvSeverity(payload);
-            setDeviceData(prev => ({
-                ...prev,
-                [deviceId]: {
-                    ...prev[deviceId],
-                    environment: {
-                        ...prev[deviceId]?.environment,
-                        severity
-                    }
-                }
-            }));
-        } catch (e) { /* ignore */ }
 
         // Get thresholds from localStorage
         const thresholds = getThresholds();
@@ -856,7 +851,10 @@ export function DeviceProvider({ children }) {
                                     if (queue.length > 0) {
                                         const [nextTask, ...remaining] = queue;
                                         setTimeout(() => {
-                                            handleRobotTaskUpdate(deviceId, robotId, { ...nextTask, status: 'Assigned', assignedAt: new Date().toISOString() });
+                                            // Strip stale execution state so dequeued task always starts fresh at 0%
+                                            const { phase: _p, progress: _pr, sourceArrivedAt: _sa, pickedUpAt: _pu,
+                                                    destinationArrivedAt: _da, deliveredAt: _de, completedAt: _ca, ...freshTask } = nextTask;
+                                            handleRobotTaskUpdate(deviceId, robotId, { ...freshTask, status: 'Assigned', assignedAt: new Date().toISOString() });
                                             notifyTaskUpdate();
                                         }, 500);
                                         return {
@@ -1440,7 +1438,10 @@ export function DeviceProvider({ children }) {
                         const nextPhase = hasSrc ? TASK_PHASES.EN_ROUTE_TO_SOURCE : TASK_PHASES.EN_ROUTE_TO_DESTINATION;
                         // Update mock service phase so robot moves in the right direction
                         updateActiveTaskPhase(deviceId, robotId, nextPhase);
-                        const progress = computePhaseProgress({ ...r.task, phase: nextPhase }, r.location?.lat, r.location?.lng);
+                        // Always start at the bottom of the phase band so newly-assigned tasks
+                        // visually begin from 0% regardless of the robot's current position.
+                        // Location ticks will smoothly advance the bar from here.
+                        const progress = nextPhase === TASK_PHASES.EN_ROUTE_TO_SOURCE ? 2 : 51;
                         return {
                             ...p,
                             [deviceId]: { ...p[deviceId], [robotId]: { ...r, task: { ...r.task, phase: nextPhase, progress }, lastUpdate: Date.now() } }
@@ -1478,9 +1479,11 @@ export function DeviceProvider({ children }) {
                     if (r.task && currentPhase !== TASK_PHASES.COMPLETED) return p;
 
                     const [nextTask, ...remaining] = r.taskQueue;
-                    // Schedule the next queued task
+                    // Schedule the next queued task — strip stale execution state so it starts fresh at 0%
                     setTimeout(() => {
-                        handleRobotTaskUpdate(deviceId, robotId, { ...nextTask, status: 'Assigned', assignedAt: Date.now() });
+                        const { phase: _p, progress: _pr, sourceArrivedAt: _sa, pickedUpAt: _pu,
+                                destinationArrivedAt: _da, deliveredAt: _de, completedAt: _ca, ...freshTask } = nextTask;
+                        handleRobotTaskUpdate(deviceId, robotId, { ...freshTask, status: 'Assigned', assignedAt: Date.now() });
                     }, 100);
                     return {
                         ...p,
@@ -1706,7 +1709,8 @@ export function DeviceProvider({ children }) {
 
         const pollOnce = async () => {
             try {
-                const deviceRobots = robots[selectedDeviceId] || {};
+                // Read robots via ref so we don't need 'robots' in the dep array
+                const deviceRobots = (robotsRef.current ?? robots)[selectedDeviceId] || {};
                 const robotIds = Object.keys(deviceRobots);
                 if (robotIds.length === 0) return;
 
@@ -1758,7 +1762,10 @@ export function DeviceProvider({ children }) {
         pollOnce();
         const id = setInterval(pollOnce, 10000);
         return () => { cancelled = true; clearInterval(id); };
-    }, [isAuthenticated, selectedDeviceId, robots, handleRobotTempUpdate, handleRobotBatteryUpdate, handleRobotStatusUpdate, handleRobotTaskUpdate]);
+    // Note: 'robots' is intentionally omitted — we read it via robotsRef to prevent the effect
+    // from restarting every 3 s on each WebSocket robot tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthenticated, selectedDeviceId, handleRobotTempUpdate, handleRobotBatteryUpdate, handleRobotStatusUpdate, handleRobotTaskUpdate]);
 
     // ===== TIMEOUT DETECTION =====
     // Periodically check if any robot with an active task hasn't received a location update for 5 min → mark FAILED

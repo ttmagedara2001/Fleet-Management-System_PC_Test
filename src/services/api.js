@@ -1,149 +1,195 @@
 /**
- * Fleet Management System — API Client (DEMO MODE)
+ * @module api
+ * @description Frontend-independent API service layer.
  *
- * All HTTP requests are intercepted and routed to MockDataService.
- * No real network calls are made.
+ * This module acts as the single integration point for all data access.
+ * In DEMO / standalone mode every function delegates to mockDataService,
+ * which generates realistic data entirely in the browser — no backend
+ * server, no network calls, zero external dependencies.
+ *
+ * To connect a real backend in the future, replace the implementations
+ * below with actual HTTP / WebSocket calls while keeping the same
+ * function signatures so the rest of the app requires zero changes.
  */
 
 import {
+  mockGetDeviceStreamData,
+  mockGetTopicStreamData,
   mockGetStateDetails,
   mockGetTopicStateDetails,
   mockUpdateStateDetails,
-  mockGetDeviceStreamData,
-  mockGetTopicStreamData,
-} from './mockDataService';
+} from "./mockDataService";
 
-// ── Keep the getTimeRange utility (it's used by components) ──
-export function getTimeRange(rangeHours = 24) {
-  const now = new Date();
-  const start = new Date(
-    now.getTime() - parseFloat(rangeHours) * 60 * 60 * 1000,
-  );
-  const format = (date) => date.toISOString().split('.')[0] + 'Z';
-  return {
-    startTime: format(start),
-    endTime: format(now),
-  };
-}
-
-// ============================================================================
-// CORE ENDPOINTS (Mock implementations)
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// TIME RANGE HELPER
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * 1. Fetch historical stream data for ALL topics on a device
+ * Convert a human-readable time range string into ISO-8601 start / end times.
+ *
+ * @param {string} range - e.g. '1h', '6h', '12h', '24h', '7d', '30d'
+ * @returns {{ startTime: string, endTime: string }}
  */
-export async function getDeviceStreamData(
+export function getTimeRange(range = "6h") {
+  const now = new Date();
+  const end = now.toISOString();
+
+  const unitMap = {
+    m: 60 * 1000,
+    h: 3600 * 1000,
+    d: 24 * 3600 * 1000,
+    w: 7 * 24 * 3600 * 1000,
+  };
+
+  const match = String(range).match(/^(\d+(?:\.\d+)?)\s*([mhdw])$/i);
+  let msBack = 6 * 3600 * 1000; // default 6 hours
+
+  if (match) {
+    const value = parseFloat(match[1]);
+    const unit = match[2].toLowerCase();
+    msBack = value * (unitMap[unit] || 3600 * 1000);
+  }
+
+  const start = new Date(now.getTime() - msBack).toISOString();
+  return { startTime: start, endTime: end };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STREAM DATA (historical telemetry)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Fetch historical stream data for an entire device (all topics).
+ *
+ * @param {string} deviceId
+ * @param {string} startTime - ISO-8601 timestamp
+ * @param {string} endTime   - ISO-8601 timestamp
+ * @param {string} [pagination='0']
+ * @param {string} [pageSize='100']
+ * @param {object} [_opts={}]  - Reserved for future options (e.g. { silent: true })
+ * @returns {Promise<{ status: string, data: any[], pagination: object }>}
+ */
+export function getDeviceStreamData(
   deviceId,
   startTime,
   endTime,
-  pagination = '0',
-  pageSize = '100',
+  pagination = "0",
+  pageSize = "100",
+  _opts = {},
 ) {
   return mockGetDeviceStreamData(deviceId, startTime, endTime, pagination, pageSize);
 }
 
 /**
- * 2. Fetch historical stream data for a SPECIFIC topic
+ * Fetch historical stream data for a specific MQTT topic.
+ *
+ * @param {string} deviceId
+ * @param {string} topic
+ * @param {string} startTime - ISO-8601 timestamp
+ * @param {string} endTime   - ISO-8601 timestamp
+ * @param {string} [pagination='0']
+ * @param {string} [pageSize='100']
+ * @param {object} [_opts={}]
+ * @returns {Promise<{ status: string, data: any[], pagination: object }>}
  */
-export async function getTopicStreamData(
+export function getTopicStreamData(
   deviceId,
   topic,
   startTime,
   endTime,
-  pagination = '0',
-  pageSize = '100',
-  { silent = false } = {},
+  pagination = "0",
+  pageSize = "100",
+  _opts = {},
 ) {
   return mockGetTopicStreamData(deviceId, topic, startTime, endTime, pagination, pageSize);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE (latest persisted values)
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * 3. Fetch current state details for a SPECIFIC topic
+ * Fetch the latest state / configuration details for a device.
+ * Alias: `getStateDetails` (used in DeviceContext) and
+ *        `getDeviceStateDetails` (used in Analysis).
+ *
+ * @param {string} deviceId
+ * @returns {Promise<{ status: string, data: object }>}
  */
-export async function getTopicStateDetails(deviceId, topic) {
+export function getStateDetails(deviceId) {
+  return mockGetStateDetails(deviceId);
+}
+
+/** Alias kept for backwards compatibility with Analysis.jsx import. */
+export const getDeviceStateDetails = getStateDetails;
+
+/**
+ * Fetch latest state for a specific topic under a device.
+ *
+ * @param {string} deviceId
+ * @param {string} topic
+ * @returns {Promise<{ status: string, data: any }>}
+ */
+export function getTopicStateDetails(deviceId, topic) {
   return mockGetTopicStateDetails(deviceId, topic);
 }
 
 /**
- * 4. Fetch ALL current state details for a device
+ * Write / update state for a specific topic under a device.
+ *
+ * @param {string} deviceId
+ * @param {string} topic
+ * @param {object} payload
+ * @returns {Promise<{ status: string, message: string }>}
  */
-export async function getDeviceStateDetails(deviceId) {
-  return mockGetStateDetails(deviceId);
-}
-
-/**
- * Sequence helper: fetch state details for a specific topic, then fetch
- * the overall device state.
- */
-export async function fetchTopicThenDeviceState(deviceId, topic) {
-  try {
-    const topicState = await getTopicStateDetails(deviceId, topic);
-    const deviceState = await getDeviceStateDetails(deviceId);
-    return { topicState, deviceState };
-  } catch (err) {
-    const e = new Error(`Failed to fetch topic/device state: ${err.message}`);
-    e.original = err;
-    throw e;
-  }
-}
-
-/**
- * 5. Update device state (Control API)
- */
-export async function updateStateDetails(deviceId, topic, payload) {
+export function updateStateDetails(deviceId, topic, payload) {
   return mockUpdateStateDetails(deviceId, topic, payload);
 }
 
-// ============================================================================
-// CONVENIENCE HELPERS
-// ============================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// DEVICE CONTROLS  (AC / Air-Purifier convenience wrappers)
+// ─────────────────────────────────────────────────────────────────────────────
 
-export async function toggleAC(deviceId, turnOn) {
-  return updateStateDetails(deviceId, 'fleetMS/ac', {
-    status: turnOn ? 'ON' : 'OFF',
-  });
-}
-
-export async function setAirPurifier(deviceId, mode) {
-  return updateStateDetails(deviceId, 'fleetMS/airPurifier', {
-    status: mode,
+/**
+ * Toggle the AC unit for a device.
+ *
+ * @param {string} deviceId
+ * @param {boolean} on - true = ON, false = OFF
+ * @returns {Promise}
+ */
+export function toggleAC(deviceId, on) {
+  return mockUpdateStateDetails(deviceId, "fleetMS/device/ac", {
+    status: on ? "ON" : "OFF",
+    updatedAt: new Date().toISOString(),
   });
 }
 
 /**
- * Legacy support for components using old names
+ * Set the air purifier state for a device.
+ *
+ * @param {string} deviceId
+ * @param {boolean} active - true = ACTIVE, false = INACTIVE
+ * @returns {Promise}
  */
-export const getAllStreamData = getDeviceStreamData;
-export const getStreamData = getTopicStreamData;
-export const getStateDetails = getDeviceStateDetails;
-export const updateState = updateStateDetails;
+export function setAirPurifier(deviceId, active) {
+  return mockUpdateStateDetails(deviceId, "fleetMS/device/airPurifier", {
+    status: active ? "ACTIVE" : "INACTIVE",
+    updatedAt: new Date().toISOString(),
+  });
+}
 
-// Mock api object (components may import `api` for raw access)
-const api = {
-  post: async (url, data) => {
-    // Route based on URL
-    if (url.includes('get-stream-data/device/topic')) {
-      return { data: await mockGetTopicStreamData(data.deviceId, data.topic, data.startTime, data.endTime, data.pagination, data.pageSize) };
-    }
-    if (url.includes('get-stream-data/device')) {
-      return { data: await mockGetDeviceStreamData(data.deviceId, data.startTime, data.endTime, data.pagination, data.pageSize) };
-    }
-    if (url.includes('get-state-details/device/topic')) {
-      return { data: await mockGetTopicStateDetails(data.deviceId, data.topic) };
-    }
-    if (url.includes('get-state-details/device')) {
-      return { data: await mockGetStateDetails(data.deviceId) };
-    }
-    if (url.includes('update-state-details')) {
-      return { data: await mockUpdateStateDetails(data.deviceId, data.topic, data.payload) };
-    }
-    // Fallback
-    return { data: { status: 'Success', message: 'Demo mode — no-op' } };
-  },
-  get: async () => ({ data: { status: 'Success' } }),
-  put: async () => ({ data: { status: 'Success' } }),
-  delete: async () => ({ data: { status: 'Success' } }),
+// ─────────────────────────────────────────────────────────────────────────────
+// DEFAULT EXPORT (convenience object for named imports or destructuring)
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default {
+  getTimeRange,
+  getDeviceStreamData,
+  getTopicStreamData,
+  getStateDetails,
+  getDeviceStateDetails,
+  getTopicStateDetails,
+  updateStateDetails,
+  toggleAC,
+  setAirPurifier,
 };
-
-export default api;

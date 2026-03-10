@@ -12,7 +12,10 @@ import {
     CheckCircle,
     Battery,
     Loader2,
-    RefreshCw
+    RefreshCw,
+    ArrowLeft,
+    Map,
+    ChevronRight
 } from 'lucide-react';
 import { useDevice } from '../contexts/DeviceContext';
 import { toggleAC, setAirPurifier } from '../services/api';
@@ -837,6 +840,7 @@ function RobotDetails() {
 // Main Dashboard Component
 function Dashboard() {
     const [isMobile, setIsMobile] = useState(false);
+    const [showMobileMap, setShowMobileMap] = useState(false);
 
     useEffect(() => {
         function update() {
@@ -847,8 +851,38 @@ function Dashboard() {
         return () => window.removeEventListener('resize', update);
     }, []);
 
+    // Lock body scroll when mobile map is open
+    useEffect(() => {
+        if (showMobileMap) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [showMobileMap]);
+
     return (
         <div className="dashboard-content">
+            {/* Mobile Full-Screen Map View */}
+            {isMobile && showMobileMap && (
+                <div className="mobile-map-view">
+                    <div className="mobile-map-view-header">
+                        <button
+                            className="mobile-map-view-back"
+                            onClick={() => setShowMobileMap(false)}
+                            aria-label="Back to dashboard"
+                        >
+                            <ArrowLeft size={20} />
+                        </button>
+                        <span className="mobile-map-view-title">Robot Floor Map</span>
+                        <span className="mobile-map-view-hint">Tap robot to inspect</span>
+                    </div>
+                    <div className="mobile-map-view-content">
+                        <FabMap />
+                    </div>
+                </div>
+            )}
+
             {/* Mobile Layout - Vertical stacking */}
             {isMobile ? (
                 <>
@@ -859,10 +893,21 @@ function Dashboard() {
                         <ControlToggles />
                     </div>
 
-                    {/* Map - Compact on Mobile */}
-                    <div className="mobile-map-section">
-                        <FabMap />
-                    </div>
+                    {/* Map Link Card — replaces inline map on mobile */}
+                    <button
+                        className="mobile-map-link-card"
+                        onClick={() => setShowMobileMap(true)}
+                        aria-label="View robot floor map"
+                    >
+                        <div className="mobile-map-link-card__icon">
+                            <Map size={26} />
+                        </div>
+                        <div className="mobile-map-link-card__text">
+                            <div className="mobile-map-link-card__title">View Robot Floor Map</div>
+                            <div className="mobile-map-link-card__sub">Live robot positions &amp; zone status</div>
+                        </div>
+                        <ChevronRight size={20} className="mobile-map-link-card__arrow" />
+                    </button>
 
                     {/* Alerts */}
                     <AlertsCard />

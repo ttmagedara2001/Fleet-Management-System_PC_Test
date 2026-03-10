@@ -34,6 +34,25 @@ export default {
         "glow-gold": "0 4px 20px rgba(245,158,11,0.4)",
         "glow-red": "0 4px 20px rgba(239, 68, 68, 0.4)",
       },
+      keyframes: {
+        slideIn: {
+          from: { opacity: "0", transform: "translateY(-10px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
+        fadeIn: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
+        slideUp: {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
+      },
+      animation: {
+        "slide-in": "slideIn 0.2s ease",
+        "fade-in": "fadeIn 0.2s ease",
+        "slide-up": "slideUp 0.3s ease",
+      },
     },
   },
   plugins: [],

@@ -15,6 +15,7 @@ import {
     Clock,
     Zap,
     RefreshCw,
+    RotateCcw,
     Loader2,
     ShieldAlert
 } from 'lucide-react';
@@ -26,7 +27,7 @@ import {
     computeRobotHealthFromSettings
 } from '../../utils/thresholds';
 
-function RobotCard({ robot }) {
+function RobotCard({ robot, onReset }) {
     // compute robot health from battery percentage using user-defined thresholds
     const batteryValue = robot.status?.battery ?? robot.status?.battery_pct ?? robot.battery_pct ?? robot.battery;
     const health = computeRobotHealthFromSettings(batteryValue);
@@ -229,6 +230,33 @@ function RobotCard({ robot }) {
                                     <span className="fleet-task-result__label fleet-task-result--completed">
                                         Completed
                                     </span>
+                                    {/* Reset button — only on completed/failed tasks */}
+                                    <button
+                                        onClick={() => onReset && onReset(robot.id)}
+                                        title="Reset robot to free state"
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            marginLeft: 'auto',
+                                            padding: '3px 10px',
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            fontFamily: "'Inter', system-ui, sans-serif",
+                                            color: '#5530FA',
+                                            background: 'rgba(85,48,250,0.08)',
+                                            border: '1px solid rgba(85,48,250,0.3)',
+                                            borderRadius: '7px',
+                                            cursor: 'pointer',
+                                            transition: 'background 0.15s ease',
+                                            flexShrink: 0,
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(85,48,250,0.18)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(85,48,250,0.08)'}
+                                    >
+                                        <RotateCcw size={11} />
+                                        Free
+                                    </button>
                                 </div>
                             );
                         }
@@ -239,6 +267,33 @@ function RobotCard({ robot }) {
                                     <span className="fleet-task-result__label fleet-task-result--failed">
                                         Failed
                                     </span>
+                                    {/* Reset button — only on completed/failed tasks */}
+                                    <button
+                                        onClick={() => onReset && onReset(robot.id)}
+                                        title="Reset robot to free state"
+                                        style={{
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                            marginLeft: 'auto',
+                                            padding: '3px 10px',
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            fontFamily: "'Inter', system-ui, sans-serif",
+                                            color: '#DC2626',
+                                            background: 'rgba(220,38,38,0.07)',
+                                            border: '1px solid rgba(220,38,38,0.25)',
+                                            borderRadius: '7px',
+                                            cursor: 'pointer',
+                                            transition: 'background 0.15s ease',
+                                            flexShrink: 0,
+                                        }}
+                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(220,38,38,0.16)'}
+                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(220,38,38,0.07)'}
+                                    >
+                                        <RotateCcw size={11} />
+                                        Free
+                                    </button>
                                 </div>
                             );
                         }
@@ -269,7 +324,7 @@ function RobotCard({ robot }) {
 }
 
 function RobotFleetPanel() {
-    const { currentRobots, fetchRobotTasks } = useDevice();
+    const { currentRobots, fetchRobotTasks, resetRobot } = useDevice();
     const [isRefreshing, setIsRefreshing] = useState(false);
 
     const robots = Object.values(currentRobots || {});
@@ -345,7 +400,7 @@ function RobotFleetPanel() {
             {robots.length > 0 ? (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-1 md:gap-2">
                     {robots.map(robot => (
-                        <RobotCard key={robot.id} robot={robot} />
+                        <RobotCard key={robot.id} robot={robot} onReset={resetRobot} />
                     ))}
                 </div>
             ) : (

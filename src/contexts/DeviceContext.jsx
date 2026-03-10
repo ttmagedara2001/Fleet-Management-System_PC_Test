@@ -853,7 +853,7 @@ export function DeviceProvider({ children }) {
                                         setTimeout(() => {
                                             // Strip stale execution state so dequeued task always starts fresh at 0%
                                             const { phase: _p, progress: _pr, sourceArrivedAt: _sa, pickedUpAt: _pu,
-                                                    destinationArrivedAt: _da, deliveredAt: _de, completedAt: _ca, ...freshTask } = nextTask;
+                                                destinationArrivedAt: _da, deliveredAt: _de, completedAt: _ca, ...freshTask } = nextTask;
                                             handleRobotTaskUpdate(deviceId, robotId, { ...freshTask, status: 'Assigned', assignedAt: new Date().toISOString() });
                                             notifyTaskUpdate();
                                         }, 500);
@@ -1482,7 +1482,7 @@ export function DeviceProvider({ children }) {
                     // Schedule the next queued task — strip stale execution state so it starts fresh at 0%
                     setTimeout(() => {
                         const { phase: _p, progress: _pr, sourceArrivedAt: _sa, pickedUpAt: _pu,
-                                destinationArrivedAt: _da, deliveredAt: _de, completedAt: _ca, ...freshTask } = nextTask;
+                            destinationArrivedAt: _da, deliveredAt: _de, completedAt: _ca, ...freshTask } = nextTask;
                         handleRobotTaskUpdate(deviceId, robotId, { ...freshTask, status: 'Assigned', assignedAt: Date.now() });
                     }, 100);
                     return {
@@ -1762,9 +1762,9 @@ export function DeviceProvider({ children }) {
         pollOnce();
         const id = setInterval(pollOnce, 10000);
         return () => { cancelled = true; clearInterval(id); };
-    // Note: 'robots' is intentionally omitted — we read it via robotsRef to prevent the effect
-    // from restarting every 3 s on each WebSocket robot tick.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // Note: 'robots' is intentionally omitted — we read it via robotsRef to prevent the effect
+        // from restarting every 3 s on each WebSocket robot tick.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isAuthenticated, selectedDeviceId, handleRobotTempUpdate, handleRobotBatteryUpdate, handleRobotStatusUpdate, handleRobotTaskUpdate]);
 
     // ===== TIMEOUT DETECTION =====
@@ -1849,6 +1849,30 @@ export function DeviceProvider({ children }) {
     // History getters for Analysis page
     const getEnvHistory = useCallback((deviceId) => envHistory[deviceId] || [], [envHistory]);
     const getRobotHistory = useCallback((deviceId, robotId) => (robotHistory[deviceId] && robotHistory[deviceId][robotId]) || [], [robotHistory]);
+
+    // Reset a specific robot to a free/idle state (clears task, sets state to IDLE).
+    // Called by the user pressing the reset button on a robot card after task completion.
+    const resetRobot = useCallback((robotId) => {
+        if (!selectedDeviceId || !robotId) return;
+        clearActiveTask(selectedDeviceId, robotId);
+        setRobots(prev => {
+            const existing = prev[selectedDeviceId]?.[robotId];
+            if (!existing) return prev;
+            return {
+                ...prev,
+                [selectedDeviceId]: {
+                    ...prev[selectedDeviceId],
+                    [robotId]: {
+                        ...existing,
+                        task: null,
+                        taskQueue: [],
+                        status: { ...existing.status, state: 'IDLE', load: null },
+                        lastUpdate: Date.now(),
+                    },
+                },
+            };
+        });
+    }, [selectedDeviceId]);
 
     // Fetch robot tasks from API using /user/get-state-details/device/topic
     // This fetches task data for all robots from the topic fleetMS/robots/<robotId>/task
@@ -2065,7 +2089,8 @@ export function DeviceProvider({ children }) {
         isRobotBusy,          // Check if robot has an active task
         getRobotActiveTask,   // Get robot's current active task
         fetchedRobotTasks,    // Cached fetched tasks by device
-        getLocalTaskHistory   // Persistent local task history for all allocated tasks
+        getLocalTaskHistory,  // Persistent local task history for all allocated tasks
+        resetRobot,           // Reset a robot to free/idle state after task completion
     };
 
     return (

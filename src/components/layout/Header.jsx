@@ -73,18 +73,29 @@ const DropdownItem = ({ label, href, active, onClick }) => {
 
 // ─── Brand Bar ───────────────────────────────────────────────────────────────
 /**
- * BrandBar — 88 px sticky top stripe.
+ * BrandBar — sticky top stripe.
  *
  * • Background  : solid #060B26
  * • Bottom border: 1 px #5530FA
- * • Left   : Protonest logo  +  "Go Back To Website" link
- * • Center : "Fleet Management System" title with dropdown chevron
- * • Right  : "View Full Code" frosted-glass button
+ *
+ * Portrait mobile (<sm): 3-row stacked layout
+ *   Row 1 — ‹ Go Back (left)  |  Protonest logo (centre)  |  spacer (right)
+ *   Row 2 — "Fleet Management System" title + ChevronDown, centred
+ *   Row 3 — "View Full Code" frosted-glass button, centred
+ *
+ * Desktop (sm+): original single horizontal row
+ *   Left — Protonest logo + "Go Back To Website"
+ *   Centre — title + ChevronDown
+ *   Right — "View Full Code"
+ *
+ * The dropdown flyout is a direct child of brand-bar so it is shared by both
+ * layouts. Its inline top is 104px (portrait, below row 2); the CSS class
+ * .brand-bar-dropdown overrides this to 88px on sm+.
  */
 const BrandBar = () => {
     const [titleOpen, setTitleOpen] = useState(false);
 
-    // Close dropdown when clicking outside
+    // Close dropdown when clicking outside the brand bar
     const dropdownRef = useRef(null);
     useEffect(() => {
         function handleOutside(e) {
@@ -98,7 +109,8 @@ const BrandBar = () => {
 
     return (
         <div
-            className="brand-bar w-full flex items-center justify-between"
+            ref={dropdownRef}
+            className="brand-bar w-full"
             style={{
                 position: 'fixed',
                 top: 0,
@@ -112,156 +124,331 @@ const BrandBar = () => {
                 WebkitBackdropFilter: 'blur(16px)',
             }}
         >
-            {/* ── Left: Protonest logo + back link ── */}
-            <div className="flex items-center min-w-0 sm:min-w-[180px] mr-2 sm:mr-8">
-                <a
-                    href="https://protonestconnect.co/"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 group"
-                    aria-label="Protonest — Go back to website"
-                >
+            {/* ── Portrait mobile: 3-row stacked (hidden on sm+) ── */}
+            <div className="flex sm:hidden flex-col" style={{ padding: '8px 16px 10px' }}>
+
+                {/* Row 1: Go Back | Logo | invisible spacer */}
+                <div className="flex items-center justify-between">
+                    <a
+                        href="https://protonestconnect.co/"
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                            fontFamily: "'Inter', system-ui, sans-serif",
+                            fontSize: '13px',
+                            fontWeight: 400,
+                            color: 'rgba(255,255,255,0.80)',
+                            textDecoration: 'none',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        ‹ Go Back
+                    </a>
                     <img
                         src={protonestLogo}
                         alt="Protonest logo"
-                        className="h-10 w-10 object-contain flex-shrink-0 transition-all duration-300 group-hover:scale-105"
+                        className="h-10 w-10 object-contain"
                     />
-                    <span
-                        className="hidden sm:inline text-white/80 group-hover:text-white transition-colors duration-200 whitespace-nowrap ml-0.5"
-                        style={{
-                            fontFamily: "'Inter', system-ui, sans-serif",
-                            fontSize: '12px',
-                            fontWeight: 400,
-                        }}
-                    >
-                        ‹ Go Back To Website
-                    </span>
-                </a>
-            </div>
+                    {/* Spacer keeps logo visually centred */}
+                    <div style={{ width: '60px' }} aria-hidden="true" />
+                </div>
 
-            {/* ── Center: Title with dropdown chevron ── */}
-            <div className="flex-1 flex justify-center" ref={dropdownRef}>
-                <button
-                    onClick={() => setTitleOpen(v => !v)}
-                    className="flex items-center gap-2 group px-4 py-2 rounded-xl hover:bg-white/5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A48FFF]"
-                    aria-expanded={titleOpen}
-                    aria-haspopup="listbox"
-                >
-                    <span
-                        className="brand-bar-title text-white select-none"
-                        style={{
-                            fontFamily: "'Inter', system-ui, sans-serif",
-                            fontWeight: 500,
-                            letterSpacing: '-0.01em',
-                        }}
+                {/* Row 2: Title + ChevronDown */}
+                <div className="flex justify-center mt-1">
+                    <button
+                        onClick={() => setTitleOpen(v => !v)}
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-white/5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A48FFF]"
+                        aria-expanded={titleOpen}
+                        aria-haspopup="listbox"
                     >
-                        Fleet Management System
-                    </span>
-                    <ChevronDown
-                        className={`w-5 h-5 text-white/70 group-hover:text-white transition-all duration-300 ${titleOpen ? 'rotate-180 text-[#A48FFF]' : ''}`}
-                    />
-                </button>
-
-                {/* Dropdown flyout */}
-                {titleOpen && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            top: '88px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            zIndex: 200,
-                            marginTop: '4px',
-                            width: '288px',
-                            borderRadius: '16px',
-                            overflow: 'hidden',
-                            background: '#0F1535',
-                            border: '1px solid rgba(85, 48, 250, 0.5)',
-                            boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
-                            backdropFilter: 'blur(24px)',
-                            WebkitBackdropFilter: 'blur(24px)',
-                        }}
-                    >
-                        {/* Header label */}
-                        <div
+                        <span
+                            className="text-white select-none"
                             style={{
-                                padding: '14px 20px 12px',
-                                borderBottom: '1px solid rgba(255,255,255,0.07)',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                                fontWeight: 500,
+                                fontSize: '18px',
+                                letterSpacing: '-0.01em',
                             }}
                         >
-                            <p
-                                style={{
-                                    margin: 0,
-                                    color: '#818CF8',
-                                    fontFamily: "'Inter', system-ui, sans-serif",
-                                    fontSize: '11px',
-                                    fontWeight: 700,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.16em',
-                                }}
-                            >
-                                Switch System
-                            </p>
-                        </div>
+                            Fleet Management System
+                        </span>
+                        <ChevronDown
+                            className={`w-5 h-5 text-white/70 transition-all duration-300 ${titleOpen ? 'rotate-180 text-[#A48FFF]' : ''}`}
+                        />
+                    </button>
+                </div>
 
-                        {/* Items */}
-                        <div style={{ padding: '6px 0' }}>
-                            {[
-                                {
-                                    label: 'Fleet Management System',
-                                    href: 'https://gentle-flower-091576403.6.azurestaticapps.net/',
-                                    active: true,
-                                },
-                                {
-                                    label: 'Plant Monitoring System',
-                                    href: 'https://ambitious-bay-0d5177503.4.azurestaticapps.net/',
-                                    active: false,
-                                },
-                                {
-                                    label: 'Factory Management System',
-                                    href: 'https://witty-grass-0d4e8e603.6.azurestaticapps.net/',
-                                    active: false,
-                                },
-                            ].map(({ label, href, active }) => (
-                                <DropdownItem
-                                    key={label}
-                                    label={label}
-                                    href={href}
-                                    active={active}
-                                    onClick={() => setTitleOpen(false)}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                )}
+                {/* Row 3: View Full Code — content-sized, centred */}
+                <div className="flex justify-center mt-2">
+                    <a
+                        href="https://github.com/ProtonestIoT/PC-Fleet-management-system"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center font-semibold text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A48FFF]"
+                        style={{
+                            fontFamily: "'Inter', system-ui, sans-serif",
+                            fontWeight: 600,
+                            background: 'rgba(164, 143, 255, 0.12)',
+                            border: '1px solid rgba(164, 143, 255, 0.3)',
+                            backdropFilter: 'blur(6px)',
+                            WebkitBackdropFilter: 'blur(6px)',
+                            borderRadius: '8px',
+                            padding: '10px 36px',
+                            fontSize: '13px',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        View Full Code
+                    </a>
+                </div>
             </div>
 
-            {/* ── Right: "View Full Code" button ── */}
-            <div className="flex items-center justify-end min-w-0 sm:min-w-[180px] ml-2 sm:ml-8">
-                <a
-                    href="https://github.com/ProtonestIoT/PC-Fleet-management-system"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center font-semibold text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A48FFF]"
+            {/* ── Desktop: single horizontal row (shown on sm+) ── */}
+            <div
+                className="hidden sm:flex items-center justify-between"
+                style={{ height: '88px', paddingLeft: '32px', paddingRight: '32px' }}
+            >
+                {/* Left: Protonest logo + back link */}
+                <div className="flex items-center min-w-[180px] mr-8">
+                    <a
+                        href="https://protonestconnect.co/"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 group"
+                        aria-label="Protonest — Go back to website"
+                    >
+                        <img
+                            src={protonestLogo}
+                            alt="Protonest logo"
+                            className="h-10 w-10 object-contain flex-shrink-0 transition-all duration-300 group-hover:scale-105"
+                        />
+                        <span
+                            className="text-white/80 group-hover:text-white transition-colors duration-200 whitespace-nowrap ml-0.5"
+                            style={{
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                                fontSize: '12px',
+                                fontWeight: 400,
+                            }}
+                        >
+                            ‹ Go Back To Website
+                        </span>
+                    </a>
+                </div>
+
+                {/* Centre: Title with dropdown chevron */}
+                <div className="flex-1 flex justify-center">
+                    <button
+                        onClick={() => setTitleOpen(v => !v)}
+                        className="flex items-center gap-2 group px-4 py-2 rounded-xl hover:bg-white/5 transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A48FFF]"
+                        aria-expanded={titleOpen}
+                        aria-haspopup="listbox"
+                    >
+                        <span
+                            className="brand-bar-title text-white select-none"
+                            style={{
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                                fontWeight: 500,
+                                letterSpacing: '-0.01em',
+                            }}
+                        >
+                            Fleet Management System
+                        </span>
+                        <ChevronDown
+                            className={`w-5 h-5 text-white/70 group-hover:text-white transition-all duration-300 ${titleOpen ? 'rotate-180 text-[#A48FFF]' : ''}`}
+                        />
+                    </button>
+                </div>
+
+                {/* Right: "View Full Code" button */}
+                <div className="flex items-center justify-end min-w-[180px] ml-8">
+                    <a
+                        href="https://github.com/ProtonestIoT/PC-Fleet-management-system"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center justify-center font-semibold text-white rounded-lg transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#A48FFF]"
+                        style={{
+                            height: '34px',
+                            fontFamily: "'Inter', system-ui, sans-serif",
+                            fontWeight: 600,
+                            background: 'rgba(164, 143, 255, 0.12)',
+                            border: '1px solid rgba(164, 143, 255, 0.3)',
+                            backdropFilter: 'blur(6px)',
+                            WebkitBackdropFilter: 'blur(6px)',
+                            borderRadius: '8px',
+                            padding: '0 10px',
+                            fontSize: '13px',
+                            whiteSpace: 'nowrap',
+                        }}
+                    >
+                        View Full Code
+                    </a>
+                </div>
+            </div>
+
+            {/* ── Shared dropdown flyout — direct child of brand-bar ──
+                inline top: 104px positions it below portrait row 2;
+                .brand-bar-dropdown CSS overrides to 88px on sm+          ── */}
+            {titleOpen && (
+                <div
+                    className="brand-bar-dropdown"
                     style={{
-                        height: '34px',
-                        fontFamily: "'Inter', system-ui, sans-serif",
-                        fontWeight: 600,
-                        background: 'rgba(164, 143, 255, 0.12)',
-                        border: '1px solid rgba(164, 143, 255, 0.3)',
-                        backdropFilter: 'blur(6px)',
-                        WebkitBackdropFilter: 'blur(6px)',
-                        borderRadius: '8px',
-                        padding: '0 10px',
-                        fontSize: '13px',
-                        whiteSpace: 'nowrap',
+                        position: 'absolute',
+                        top: '104px',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 200,
+                        marginTop: '4px',
+                        width: '288px',
+                        borderRadius: '16px',
+                        overflow: 'hidden',
+                        background: '#0F1535',
+                        border: '1px solid rgba(85, 48, 250, 0.5)',
+                        boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
+                        backdropFilter: 'blur(24px)',
+                        WebkitBackdropFilter: 'blur(24px)',
                     }}
                 >
-                    <span className="hidden sm:inline">View Full Code</span>
-                    <span className="sm:hidden">&lt;/&gt; Code</span>
-                </a>
-            </div>
+                    {/* Header label */}
+                    <div
+                        style={{
+                            padding: '14px 20px 12px',
+                            borderBottom: '1px solid rgba(255,255,255,0.07)',
+                        }}
+                    >
+                        <p
+                            style={{
+                                margin: 0,
+                                color: '#818CF8',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.16em',
+                            }}
+                        >
+                            Switch System
+                        </p>
+                    </div>
+
+                    {/* Items */}
+                    <div style={{ padding: '6px 0' }}>
+                        {[
+                            {
+                                label: 'Fleet Management System',
+                                href: 'https://gentle-flower-091576403.6.azurestaticapps.net/',
+                                active: true,
+                            },
+                            {
+                                label: 'Plant Monitoring System',
+                                href: 'https://ambitious-bay-0d5177503.4.azurestaticapps.net/',
+                                active: false,
+                            },
+                            {
+                                label: 'Factory Management System',
+                                href: 'https://witty-grass-0d4e8e603.6.azurestaticapps.net/',
+                                active: false,
+                            },
+                        ].map(({ label, href, active }) => (
+                            <DropdownItem
+                                key={label}
+                                label={label}
+                                href={href}
+                                active={active}
+                                onClick={() => setTitleOpen(false)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
+    );
+};
+
+// ─── Notification Action Button (header actions: mark-all / clear-all) ────────
+const NotifActionButton = ({ onClick, title, danger, children }) => {
+    const [hov, setHov] = useState(false);
+    return (
+        <button
+            onClick={onClick}
+            title={title}
+            onMouseEnter={() => setHov(true)}
+            onMouseLeave={() => setHov(false)}
+            style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: '32px', height: '32px',
+                border: '1px solid transparent', borderRadius: '8px', cursor: 'pointer',
+                transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+                background: hov
+                    ? (danger ? '#FEE2E2' : '#F3F4F6')
+                    : '#F9FAFB',
+                borderColor: hov
+                    ? (danger ? '#FECACA' : '#E5E7EB')
+                    : '#E5E7EB',
+                color: hov
+                    ? (danger ? '#DC2626' : '#374151')
+                    : '#6B7280',
+            }}
+        >{children}</button>
+    );
+};
+
+// ─── Notification Row Button (per-item actions: mark-read / remove) ───────────
+const NotifRowButton = ({ onClick, title, danger, children }) => {
+    const [hov, setHov] = useState(false);
+    return (
+        <button
+            onClick={onClick}
+            title={title}
+            onMouseEnter={() => setHov(true)}
+            onMouseLeave={() => setHov(false)}
+            style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: '26px', height: '26px', flexShrink: 0,
+                border: 'none', borderRadius: '6px', cursor: 'pointer',
+                transition: 'background 0.15s ease, color 0.15s ease',
+                background: hov
+                    ? (danger ? '#FEE2E2' : '#F3F4F6')
+                    : 'transparent',
+                color: hov
+                    ? (danger ? '#DC2626' : '#374151')
+                    : '#9CA3AF',
+            }}
+        >{children}</button>
+    );
+};
+
+// ─── Mobile Sheet Action Button ───────────────────────────────────────────────
+const MobileNotifButton = ({ onClick, title, danger, icon: Icon, label }) => {
+    const [hov, setHov] = useState(false);
+    return (
+        <button
+            onClick={onClick}
+            title={title}
+            onMouseEnter={() => setHov(true)}
+            onMouseLeave={() => setHov(false)}
+            style={{
+                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                padding: '8px 13px',
+                border: '1px solid',
+                borderColor: hov
+                    ? (danger ? '#FECACA' : '#D1D5DB')
+                    : (danger ? '#FCA5A5' : '#E5E7EB'),
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontFamily: "'Inter', system-ui, sans-serif",
+                fontSize: '12px', fontWeight: 600,
+                transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+                background: hov
+                    ? (danger ? '#FEE2E2' : '#F3F4F6')
+                    : (danger ? '#FEF2F2' : '#FFFFFF'),
+                color: hov
+                    ? (danger ? '#B91C1C' : '#374151')
+                    : (danger ? '#DC2626' : '#6B7280'),
+            }}
+        >
+            <Icon size={14} />
+            {label && <span>{label}</span>}
+        </button>
     );
 };
 
@@ -275,6 +462,7 @@ function Header({ onMenuToggle, sidebarOpen }) {
     const bellRef = useRef(null);
     const [isMobile, setIsMobile] = useState(false);
     const [now, setNow] = useState(new Date());
+    const [hoveredAlertId, setHoveredAlertId] = useState(null);
 
     // Clock timer
     useEffect(() => {
@@ -503,69 +691,122 @@ function Header({ onMenuToggle, sidebarOpen }) {
                 {/* Desktop Notification Popover */}
                 {showNotifications && !isMobile && (
                     <div
-                        className="fixed right-6 w-[360px] max-w-[calc(100vw-48px)] bg-white rounded-2xl shadow-2xl z-[200] overflow-hidden animate-slide-in"
-                        style={{ top: '160px' }}
                         ref={notifRef}
+                        style={{
+                            position: 'fixed',
+                            top: '160px',
+                            right: '20px',
+                            width: '380px',
+                            maxWidth: 'calc(100vw - 40px)',
+                            background: '#FFFFFF',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '20px',
+                            boxShadow: '0 20px 60px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)',
+                            zIndex: 200,
+                            overflow: 'hidden',
+                            fontFamily: "'Inter', system-ui, sans-serif",
+                        }}
                     >
-                        {/* Popover header */}
-                        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                            <h3 className="text-base font-semibold text-gray-800 m-0">Notifications</h3>
-                            <div className="flex gap-2">
-                                <button
-                                    onClick={() => markAllAlertsRead()}
-                                    title="Mark all as read"
-                                    className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200 cursor-pointer border-none"
-                                >
-                                    <CheckCheck size={16} />
-                                </button>
-                                <button
-                                    onClick={() => { clearAllAlerts(); setShowNotifications(false); }}
-                                    title="Clear all"
-                                    className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors duration-200 cursor-pointer border-none"
-                                >
-                                    <Trash2 size={16} />
-                                </button>
+                        {/* Top accent gradient line */}
+                        <div style={{ height: '3px', background: 'linear-gradient(90deg, #5530FA 0%, #A48FFF 50%, #5530FA 100%)' }} />
+
+                        {/* Header */}
+                        <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                            padding: '16px 20px 14px',
+                            borderBottom: '1px solid #F3F4F6',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Bell size={16} color="#5530FA" style={{ flexShrink: 0 }} />
+                                <span style={{ fontSize: '15px', fontWeight: 700, color: '#111827', letterSpacing: '-0.015em' }}>
+                                    Notifications
+                                </span>
+                                {unreadAlerts > 0 && (
+                                    <span style={{
+                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                        minWidth: '20px', height: '20px', padding: '0 6px',
+                                        background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                                        borderRadius: '10px', fontSize: '10px', fontWeight: 800,
+                                        color: '#fff', letterSpacing: '0.02em',
+                                        boxShadow: '0 2px 8px rgba(239,68,68,0.55)',
+                                    }}>
+                                        {unreadAlerts > 9 ? '9+' : unreadAlerts}
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                                <NotifActionButton title="Mark all as read" onClick={() => markAllAlertsRead()}>
+                                    <CheckCheck size={15} />
+                                </NotifActionButton>
+                                <NotifActionButton title="Clear all" danger onClick={() => { clearAllAlerts(); setShowNotifications(false); }}>
+                                    <Trash2 size={15} />
+                                </NotifActionButton>
                             </div>
                         </div>
 
-                        {/* Popover list */}
-                        <div className="max-h-[400px] overflow-y-auto">
+                        {/* Notification list */}
+                        <div style={{ maxHeight: '420px', overflowY: 'auto', padding: '6px 0', background: '#FFFFFF' }}>
                             {alerts.length === 0 ? (
-                                <div className="py-12 px-6 text-center text-gray-400">
-                                    <span className="text-[32px] block mb-3">🔔</span>
-                                    <p className="text-sm m-0">No notifications</p>
+                                <div style={{ padding: '52px 24px', textAlign: 'center' }}>
+                                    <div style={{ fontSize: '38px', marginBottom: '14px', lineHeight: 1 }}>🔔</div>
+                                    <p style={{ margin: 0, fontSize: '14px', fontWeight: 600, color: '#6B7280' }}>
+                                        No notifications yet
+                                    </p>
+                                    <p style={{ margin: '6px 0 0', fontSize: '12px', color: '#9CA3AF' }}>
+                                        You're all caught up!
+                                    </p>
                                 </div>
                             ) : (
-                                alerts.slice(0, 10).map(a => (
-                                    <div
-                                        key={a.id}
-                                        className={`flex items-start gap-3 px-5 py-3.5 border-b border-gray-50 last:border-0 transition-colors duration-200 hover:bg-gray-50 ${!a.read ? 'bg-sky-50' : ''}`}
-                                    >
-                                        <span className="text-base flex-shrink-0 mt-0.5">{getAlertIcon(a.type)}</span>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-[13px] text-gray-700 m-0 mb-1 leading-snug">{a.message}</p>
-                                            <span className="text-[11px] text-gray-400">{formatAlertTime(a.timestamp)}</span>
+                                alerts.slice(0, 10).map(a => {
+                                    const accentColor =
+                                        a.type === 'critical' ? '#EF4444' :
+                                        a.type === 'warning' ? '#F59E0B' : '#22C55E';
+                                    const isHov = hoveredAlertId === a.id;
+                                    return (
+                                        <div
+                                            key={a.id}
+                                            onMouseEnter={() => setHoveredAlertId(a.id)}
+                                            onMouseLeave={() => setHoveredAlertId(null)}
+                                            style={{
+                                                display: 'flex', alignItems: 'flex-start', gap: '12px',
+                                                padding: '12px 16px 12px 14px',
+                                                borderBottom: '1px solid #F3F4F6',
+                                                borderLeft: `3px solid ${!a.read ? accentColor : '#E5E7EB'}`,
+                                                background: isHov
+                                                    ? '#F9FAFB'
+                                                    : (!a.read ? '#EFF6FF' : '#FFFFFF'),
+                                                transition: 'background 0.15s ease',
+                                            }}
+                                        >
+                                            <span style={{ flexShrink: 0, fontSize: '15px', marginTop: '1px', lineHeight: 1 }}>
+                                                {getAlertIcon(a.type)}
+                                            </span>
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <p style={{
+                                                    margin: 0, marginBottom: '4px',
+                                                    fontSize: '13px', lineHeight: '1.45',
+                                                    color: !a.read ? '#111827' : '#6B7280',
+                                                    fontWeight: !a.read ? 500 : 400,
+                                                }}>{a.message}</p>
+                                                <span style={{
+                                                    fontSize: '11px',
+                                                    color: '#9CA3AF',
+                                                    letterSpacing: '0.01em',
+                                                }}>{formatAlertTime(a.timestamp)}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginTop: '1px' }}>
+                                                {!a.read && (
+                                                    <NotifRowButton title="Mark as read" onClick={() => markAlertRead(a.id)}>
+                                                        <Check size={13} />
+                                                    </NotifRowButton>
+                                                )}
+                                                <NotifRowButton title="Remove" danger onClick={() => clearAlert(a.id)}>
+                                                    <X size={13} />
+                                                </NotifRowButton>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-1 flex-shrink-0">
-                                            {!a.read && (
-                                                <button
-                                                    onClick={() => markAlertRead(a.id)}
-                                                    title="Mark as read"
-                                                    className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-200 cursor-pointer border-none bg-transparent"
-                                                >
-                                                    <Check size={14} />
-                                                </button>
-                                            )}
-                                            <button
-                                                onClick={() => clearAlert(a.id)}
-                                                title="Remove"
-                                                className="w-7 h-7 rounded-md flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-200 cursor-pointer border-none bg-transparent"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>
@@ -574,83 +815,151 @@ function Header({ onMenuToggle, sidebarOpen }) {
                 {/* Mobile Full-Screen Notification Panel */}
                 {showNotifications && isMobile && (
                     <div
-                        className="fixed inset-0 bg-black/60 z-[1000] flex items-end justify-center animate-fade-in"
+                        style={{
+                            position: 'fixed', inset: 0,
+                            background: 'rgba(17, 24, 39, 0.45)',
+                            backdropFilter: 'blur(6px)',
+                            WebkitBackdropFilter: 'blur(6px)',
+                            zIndex: 1000,
+                            display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+                        }}
                         onClick={() => setShowNotifications(false)}
                     >
                         <div
-                            className="w-full max-h-[85vh] bg-white rounded-t-3xl flex flex-col overflow-hidden animate-slide-up"
+                            style={{
+                                width: '100%',
+                                maxHeight: '88vh',
+                                background: '#FFFFFF',
+                                borderRadius: '24px 24px 0 0',
+                                borderTop: '1px solid #E5E7EB',
+                                borderLeft: '1px solid #E5E7EB',
+                                borderRight: '1px solid #E5E7EB',
+                                boxShadow: '0 -8px 40px rgba(0,0,0,0.12), 0 -2px 8px rgba(0,0,0,0.06)',
+                                display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                                fontFamily: "'Inter', system-ui, sans-serif",
+                            }}
                             onClick={(e) => e.stopPropagation()}
                         >
-                            {/* Mobile header */}
-                            <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100 flex-shrink-0">
-                                <h3 className="text-xl font-bold text-gray-800 m-0">Notifications</h3>
-                                <div className="flex items-center gap-2">
-                                    <button
-                                        className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-xs font-medium text-gray-700 transition-colors duration-200 cursor-pointer border-none"
+                            {/* Top accent line */}
+                            <div style={{ height: '3px', background: 'linear-gradient(90deg, #5530FA 0%, #A48FFF 50%, #5530FA 100%)', borderRadius: '24px 24px 0 0' }} />
+
+                            {/* Drag handle */}
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+                                <div style={{ width: '40px', height: '4px', background: '#D1D5DB', borderRadius: '2px' }} />
+                            </div>
+
+                            {/* Header */}
+                            <div style={{
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                padding: '12px 20px 16px',
+                                borderBottom: '1px solid #F3F4F6',
+                                flexShrink: 0,
+                            }}>
+                                <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '3px' }}>
+                                        <span style={{ fontSize: '18px', fontWeight: 800, color: '#111827', letterSpacing: '-0.02em' }}>
+                                            Notifications
+                                        </span>
+                                        {unreadAlerts > 0 && (
+                                            <span style={{
+                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                minWidth: '22px', height: '22px', padding: '0 7px',
+                                                background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)',
+                                                borderRadius: '11px', fontSize: '11px', fontWeight: 800, color: '#fff',
+                                                boxShadow: '0 2px 8px rgba(239,68,68,0.55)', letterSpacing: '0.02em',
+                                            }}>
+                                                {unreadAlerts > 9 ? '9+' : unreadAlerts}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                                        {unreadAlerts > 0
+                                            ? `${unreadAlerts} unread notification${unreadAlerts > 1 ? 's' : ''}`
+                                            : 'All caught up!'}
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <MobileNotifButton
                                         onClick={() => markAllAlertsRead()}
-                                    >
-                                        <CheckCheck size={18} />
-                                        <span>Mark all read</span>
-                                    </button>
-                                    <button
-                                        className="flex items-center gap-1.5 px-3 py-2 bg-red-100 hover:bg-red-200 rounded-lg text-xs font-medium text-red-600 transition-colors duration-200 cursor-pointer border-none"
+                                        title="Mark all as read"
+                                        icon={CheckCheck}
+                                        label="Mark all"
+                                    />
+                                    <MobileNotifButton
                                         onClick={() => { clearAllAlerts(); setShowNotifications(false); }}
-                                    >
-                                        <Trash2 size={18} />
-                                        <span>Clear all</span>
-                                    </button>
+                                        title="Clear all"
+                                        icon={Trash2}
+                                        label="Clear all"
+                                        danger
+                                    />
                                     <button
-                                        className="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center text-gray-500 ml-2 transition-colors duration-200 cursor-pointer border-none"
                                         onClick={() => setShowNotifications(false)}
+                                        style={{
+                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                            width: '36px', height: '36px', marginLeft: '2px',
+                                            background: '#F3F4F6', border: '1px solid #E5E7EB',
+                                            borderRadius: '50%', cursor: 'pointer',
+                                            color: '#6B7280',
+                                        }}
                                     >
-                                        <X size={24} />
+                                        <X size={20} />
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Unread count bar */}
-                            <div className="px-5 py-3 text-[13px] text-gray-500 bg-gray-50 flex-shrink-0">
-                                {unreadAlerts > 0 ? `${unreadAlerts} unread notification${unreadAlerts > 1 ? 's' : ''}` : 'All caught up!'}
-                            </div>
-
-                            {/* Mobile list */}
-                            <div className="flex-1 overflow-y-auto py-2" style={{ WebkitOverflowScrolling: 'touch' }}>
+                            {/* Mobile notification list */}
+                            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0', background: '#FFFFFF', WebkitOverflowScrolling: 'touch' }}>
                                 {alerts.length === 0 ? (
-                                    <div className="py-16 px-6 text-center">
-                                        <div className="text-5xl mb-4">🔔</div>
-                                        <p className="text-base font-semibold text-gray-700 m-0 mb-2">No notifications yet</p>
-                                        <span className="text-sm text-gray-400">You're all caught up!</span>
+                                    <div style={{ padding: '64px 24px', textAlign: 'center' }}>
+                                        <div style={{ fontSize: '48px', marginBottom: '16px', lineHeight: 1 }}>🔔</div>
+                                        <p style={{ margin: 0, fontSize: '16px', fontWeight: 700, color: '#6B7280' }}>
+                                            No notifications yet
+                                        </p>
+                                        <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#9CA3AF' }}>
+                                            You're all caught up!
+                                        </p>
                                     </div>
                                 ) : (
                                     alerts.map(a => {
-                                        const indicatorColor =
-                                            a.type === 'critical' ? 'bg-red-500' :
-                                                a.type === 'warning' ? 'bg-yellow-400' : 'bg-green-500';
+                                        const accentColor =
+                                            a.type === 'critical' ? '#EF4444' :
+                                            a.type === 'warning' ? '#F59E0B' : '#22C55E';
                                         return (
                                             <div
                                                 key={a.id}
-                                                className={`flex items-start gap-3 px-5 py-4 border-b border-gray-50 last:border-0 ${!a.read ? 'bg-sky-50' : ''}`}
+                                                style={{
+                                                    display: 'flex', alignItems: 'flex-start', gap: '14px',
+                                                    padding: '14px 20px 14px 16px',
+                                                    borderBottom: '1px solid #F3F4F6',
+                                                    borderLeft: `4px solid ${!a.read ? accentColor : '#E5E7EB'}`,
+                                                    background: !a.read ? '#EFF6FF' : '#FFFFFF',
+                                                }}
                                             >
-                                                <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${indicatorColor}`} />
-                                                <div className="flex-1 min-w-0">
-                                                    <p className="text-[14px] text-gray-700 m-0 mb-1 leading-snug">{a.message}</p>
-                                                    <span className="text-[12px] text-gray-400">{formatAlertTime(a.timestamp)}</span>
+                                                <div style={{
+                                                    width: '9px', height: '9px', borderRadius: '50%',
+                                                    background: accentColor, flexShrink: 0, marginTop: '5px',
+                                                    boxShadow: `0 0 6px ${accentColor}60`,
+                                                }} />
+                                                <div style={{ flex: 1, minWidth: 0 }}>
+                                                    <p style={{
+                                                        margin: 0, marginBottom: '5px',
+                                                        fontSize: '14px', lineHeight: '1.45',
+                                                        color: !a.read ? '#111827' : '#6B7280',
+                                                        fontWeight: !a.read ? 500 : 400,
+                                                    }}>{a.message}</p>
+                                                    <span style={{ fontSize: '12px', color: '#9CA3AF' }}>
+                                                        {formatAlertTime(a.timestamp)}
+                                                    </span>
                                                 </div>
-                                                <div className="flex gap-1.5 flex-shrink-0">
+                                                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                                                     {!a.read && (
-                                                        <button
-                                                            onClick={() => markAlertRead(a.id)}
-                                                            className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-200 hover:text-gray-700 transition-colors duration-200 cursor-pointer border-none bg-transparent"
-                                                        >
-                                                            <Check size={16} />
-                                                        </button>
+                                                        <NotifRowButton title="Mark as read" onClick={() => markAlertRead(a.id)}>
+                                                            <Check size={15} />
+                                                        </NotifRowButton>
                                                     )}
-                                                    <button
-                                                        onClick={() => clearAlert(a.id)}
-                                                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:bg-red-100 hover:text-red-500 transition-colors duration-200 cursor-pointer border-none bg-transparent"
-                                                    >
-                                                        <X size={16} />
-                                                    </button>
+                                                    <NotifRowButton title="Remove" danger onClick={() => clearAlert(a.id)}>
+                                                        <X size={15} />
+                                                    </NotifRowButton>
                                                 </div>
                                             </div>
                                         );

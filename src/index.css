@@ -4086,7 +4086,7 @@ textarea {
   }
 }
 /* ================================================================
-   MOBILE RESPONSIVE � BrandBar & App Header (mobile overrides)
+   MOBILE RESPONSIVE � BrandBar & App Header (mobile overrides)
    ================================================================ */
 
 /* BrandBar: override inline height & padding on mobile */
@@ -4133,6 +4133,38 @@ textarea {
     padding-left: 10px !important;
     padding-right: 10px !important;
     height: 52px !important;
+  }
+}
+
+/* Portrait mobile (<640px): 3-row stacked brand bar
+   — height is now auto (no fixed px clamp)
+   — dropdown anchors below row 2 at 104px
+   — app-header-bar and sidebar/content offsets update via --brandbar-height  */
+@media (orientation: portrait) and (max-width: 639px) {
+  :root {
+    --brandbar-height: 148px;
+    --app-header-offset: calc(var(--brandbar-height) + var(--app-header-height));
+  }
+
+  .brand-bar {
+    height: auto !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .app-header-bar {
+    top: 148px !important;
+  }
+
+  .brand-bar-dropdown {
+    top: 104px !important;
+  }
+}
+
+/* sm+ (≥640px): reset dropdown top to sit flush below the 88px desktop brand bar */
+@media (min-width: 640px) {
+  .brand-bar-dropdown {
+    top: 88px !important;
   }
 }
 
